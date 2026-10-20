@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
+import { productFeatures } from "../../packages/domain/src/features";
 const config = {
   url: "https://evnqorvwppdjdznhbwip.supabase.co",
   key: "sb_publishable_ikqOS72SiemBrOm5KkxMPw_U14NbmkO",
@@ -39,8 +40,16 @@ test("two real browser sessions coordinate a plan", async ({
     }
     const owner = await contexts[0].newPage();
     const member = await contexts[1].newPage();
-    await owner.goto(`${baseURL}/listing/00000000-0000-4000-8000-000000000101`);
-    await owner.getByRole("button", { name: "Собрать компанию" }).click();
+    if (productFeatures.tripPlanning) {
+      await owner.goto(
+        `${baseURL}/listing/00000000-0000-4000-8000-000000000101`,
+      );
+      await owner.getByRole("button", { name: "Собрать компанию" }).click();
+    } else {
+      await owner.goto(
+        `${baseURL}/create/00000000-0000-4000-8000-000000000101`,
+      );
+    }
     await owner.getByLabel("Название плана").fill("Демо · браузерная проверка");
     const future = new Date(Date.now() + 86400000 * 14)
       .toISOString()

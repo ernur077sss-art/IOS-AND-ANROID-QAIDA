@@ -36,3 +36,7 @@ Supabase сообщает об отключённой проверке утёк�
 npm audit выявляет advisories в транзитивных Expo/Metro/xcode зависимостях (braces, node-forge, uuid и цепочки). Совместимые обновления применены, `--force` с понижением Expo не использовался. Разбор и поддерживаемые исправления остаются release gate.
 
 Сырые приглашения, credentials и traces не входят в Git. Приватные данные не кэшируются на Next/CDN. Сессии native хранятся в SecureStore частями с manifest commit; web использует штатное browser session storage Supabase. Каталог без backend — отдельный явно подписанный read-only demo режим.
+
+## Независимый CI
+
+[GitHub Actions, 39422568598](https://github.com/ernur077sss-art/IOS-AND-ANROID-QAIDA/actions/runs/39422568598): success, 2м14с, commit `853911a`. Выполнены npm ci, typecheck, lint, 20 unit, 21 SQL, Next production build, Expo export iOS/Android/web и базовый Playwright suite (2 passed, облачный тест явно skipped без credentials). Полный облачный suite ранее прошёл локально 3/3, включая модерацию. Наличие зелёного CI не снимает release gates из RELEASE.md.

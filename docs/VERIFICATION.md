@@ -40,3 +40,9 @@ npm audit выявляет advisories в транзитивных Expo/Metro/xco
 ## Независимый CI
 
 [GitHub Actions, 39422568598](https://github.com/ernur077sss-art/IOS-AND-ANROID-QAIDA/actions/runs/39422568598): success, 2м14с, commit `853911a`. Выполнены npm ci, typecheck, lint, 20 unit, 21 SQL, Next production build, Expo export iOS/Android/web и базовый Playwright suite (2 passed, облачный тест явно skipped без credentials). Полный облачный suite ранее прошёл локально 3/3, включая модерацию. Наличие зелёного CI не снимает release gates из RELEASE.md.
+
+## Обновление дизайна — этап 2
+
+20 октября 2026: главная с горным озером, круглые категории, фотографии двух городов и шести мест; обложки создания/комнаты/списка планов, экран авторов и лицензий в web и native. Фото локальные, суммарно около 2.4 MB на платформу. Неизвестные UGC-карточки не подменяются фотографиями других объектов.
+
+После обновления прошли TypeScript, ESLint, Next production build и Expo JS/Hermes export iOS/Android/web. Базовый автономный browser suite: 2 passed, cloud skipped без credentials. Полный browser suite на реальной тестовой БД: 3 passed, включая план → приглашение → RSVP → бюджет/чат и редакционный цикл. Вручную проверены мобильная главная, фотокарточки Алматы и выбор города в браузере; новая главная, каталог Алматы и открытие музея Кастеева в iOS-симуляторе. Релизные ограничения выше сохраняются.

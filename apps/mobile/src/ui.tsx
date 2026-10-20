@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
-import { View, Text, TextInput, Pressable } from "react-native";
+import { View, Text, TextInput, Pressable, Image } from "react-native";
+import { photos, listingPhoto, type PhotoKey } from "@qayda/domain";
 import { color, s } from "./theme";
 export function Button({
   children,
@@ -67,17 +68,52 @@ export function Field({
     </View>
   );
 }
-export function Art({ large = false }: { large?: boolean }) {
+// Metro needs statically analyzable requires to package photos for offline use.
+/* eslint-disable @typescript-eslint/no-require-imports */
+const photoSources = {
+  lake: require("../assets/photos/lake.jpg"),
+  semey: require("../assets/photos/semey.jpg"),
+  almaty: require("../assets/photos/almaty.jpg"),
+  abay: require("../assets/photos/abay.jpg"),
+  zhidebay: require("../assets/photos/zhidebay.jpg"),
+  dostoevsky: require("../assets/photos/dostoevsky.jpg"),
+  kasteev: require("../assets/photos/kasteev.jpg"),
+  opera: require("../assets/photos/opera.jpg"),
+  auezov: require("../assets/photos/auezov.jpg"),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
+export function Art({
+  large = false,
+  listingId,
+  photoKey,
+  height,
+}: {
+  height?: number;
+  large?: boolean;
+  listingId?: string;
+  photoKey?: PhotoKey;
+}) {
+  const key = photoKey ?? listingPhoto(listingId);
   return (
     <View
-      accessibilityLabel="Авторская иллюстрация гор"
-      style={[s.art, large && { height: 240 }]}
+      style={[
+        s.art,
+        large && { height: 260 },
+        height !== undefined && { height },
+      ]}
     >
-      <View style={s.sun} />
-      <View style={s.mountainBack} />
-      <View style={s.mountain} />
-      <View style={s.hill} />
-      <Text style={s.artLabel}>Иллюстрация · Казахстан</Text>
+      {key ? (
+        <Image
+          source={photoSources[key]}
+          accessibilityLabel={photos[key].alt}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={s.photoPending}>
+          <Text style={s.copy}>Здесь будет фото места</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -87,6 +123,16 @@ export function Card({ children }: { children: ReactNode }) {
 export function Heading({ children }: { children: ReactNode }) {
   return <Text style={s.h2}>{children}</Text>;
 }
-export function Copy({ children }: { children: ReactNode }) {
-  return <Text style={s.copy}>{children}</Text>;
+export function Copy({
+  children,
+  lines,
+}: {
+  children: ReactNode;
+  lines?: number;
+}) {
+  return (
+    <Text style={s.copy} numberOfLines={lines}>
+      {children}
+    </Text>
+  );
 }

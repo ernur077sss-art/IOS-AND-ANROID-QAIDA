@@ -1,5 +1,5 @@
 "use client";
-import { Field, Artwork, Empty } from "./ui";
+import { Field, Photo, PhotoCredit, Empty } from "./ui";
 import { BudgetItemEditor } from "./BudgetItemEditor";
 import { CatalogEditor } from "./CatalogEditor";
 import {
@@ -28,9 +28,15 @@ import {
   Menu,
   Leaf,
   Landmark,
+  Tent,
+  Trees,
+  Drama,
+  Footprints,
+  ArrowRight,
 } from "lucide-react";
 import { client, api, humanError, type Client } from "@qayda/api-client";
 import {
+  photos,
   searchCatalogue,
   cities,
   categories,
@@ -294,7 +300,7 @@ export function Shell() {
   const catalogCard = (l: Listing) => (
     <article className="listing" key={l.id}>
       <a href={`/listing/${l.id}`}>
-        <Artwork category={l.category} />
+        <Photo category={l.category} listingId={l.id} />
         <div className="listing-body">
           <div className="eyebrow">
             {l.category} <span>↗</span>
@@ -463,7 +469,13 @@ export function Shell() {
     content = (
       <div className="narrow">
         {back}
-        <Artwork category={selected.category} large />
+        <Photo
+          category={selected.category}
+          listingId={selected.id}
+          large
+          eager
+        />
+        <PhotoCredit listingId={selected.id} />
         <div className="detail">
           <span className="eyebrow">
             {selected.category} ·{" "}
@@ -576,7 +588,18 @@ export function Shell() {
       <div className="narrow">
         {back}
         <h1>Собрать компанию</h1>
-        <p>{l?.title ?? "Место недоступно"}</p>
+        {l && (
+          <div className="selected-place">
+            <Photo listingId={l.id} />
+            <div>
+              <span className="eyebrow">ВАШЕ МЕСТО</span>
+              <h3>{l.title}</h3>
+              <p className="muted">
+                {cities.find((c) => c.slug === l.city)?.name}
+              </p>
+            </div>
+          </div>
+        )}
         <form
           className="card"
           onSubmit={form(async (data) => {
@@ -646,6 +669,11 @@ export function Shell() {
           <span className="eyebrow">
             {statusLabels[room.plan.status]} · версия {room.plan.version}
           </span>
+          {room.plan.listing_id && (
+            <div className="room-cover">
+              <Photo listingId={room.plan.listing_id} large />
+            </div>
+          )}
           <h1>{room.plan.title}</h1>
           <p className="lead">{planDate(room.plan.starts_at)}</p>
           <p>
@@ -1236,6 +1264,11 @@ export function Shell() {
                   href={`/plans/${p.id}`}
                   key={p.id}
                 >
+                  {p.listing_id && (
+                    <div className="plan-cover">
+                      <Photo listingId={p.listing_id} />
+                    </div>
+                  )}
                   <span className="eyebrow">{statusLabels[p.status]}</span>
                   <h2>{p.title}</h2>
                   <p>{planDate(p.starts_at)}</p>
@@ -1537,41 +1570,147 @@ export function Shell() {
         </p>
       </div>
     );
+  else if (section === "photos")
+    content = (
+      <div className="narrow">
+        {back}
+        <span className="eyebrow">ЛЮДИ ЗА КАДРОМ</span>
+        <h1>Фотографии Казахстана</h1>
+        <p>
+          Спасибо авторам, которые делятся своими снимками. Фотографии уменьшены
+          и кадрируются по размеру карточки.
+        </p>
+        {Object.entries(photos).map(([key, p]) => (
+          <article className="card photo-license" key={key}>
+            <Photo photoKey={key as keyof typeof photos} />
+            <h2>{p.alt}</h2>
+            <p>{p.author}</p>
+            <a
+              className="link"
+              href={p.source}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Оригинал на Wikimedia Commons ↗
+            </a>
+            <p>
+              <a
+                className="link"
+                href={p.licenseUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {p.license}
+              </a>
+            </p>
+          </article>
+        ))}
+      </div>
+    );
   else
     content = (
       <>
         {section === "home" ? (
-          <section className="hero">
-            <div className="hero-copy">
-              <span className="eyebrow">
-                <span className="dot" />
-                КАЗАХСТАН БЛИЖЕ, ЧЕМ КАЖЕТСЯ
-              </span>
-              <h1>
-                Куда поедем
-                <br />
-                <em>вместе?</em>
-              </h1>
-              <p>
-                Места с историей. Поездки с близкими.
-                <br />
-                Откройте своё следующее впечатление.
-              </p>
-              <a className="button cream" href="#ideas">
-                Найти свою идею <ArrowUpRight size={18} />
-              </a>
-              <div className="hero-note">
-                <Users size={18} />
-                Выбирайте место. Собирайте своих.
+          <>
+            <section className="hero">
+              <div className="hero-art">
+                <Photo photoKey="lake" large eager />
               </div>
-            </div>
-            <div className="hero-art">
-              <Artwork category="Природа" large />
-              <span className="art-caption">
-                КАЗАХСТАН · ПРОСТРАНСТВО ОТКРЫТИЙ
-              </span>
-            </div>
-          </section>
+              <div className="hero-copy">
+                <Mountain
+                  className="hero-mountain"
+                  size={52}
+                  strokeWidth={1.6}
+                />
+                <div className="hero-brand">Qayda</div>
+                <p className="hero-tagline">Открываем Казахстан вместе</p>
+                <h1>
+                  Куда поедем <em>вместе?</em>
+                </h1>
+                <div className="search hero-search">
+                  <Search size={20} />
+                  <input
+                    aria-label="Поиск мест"
+                    type="search"
+                    placeholder="Куда вы хотите поехать?"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                  />
+                  <a href="#ideas" aria-label="Показать найденные места">
+                    <ArrowRight size={20} />
+                  </a>
+                </div>
+                <div
+                  className="quick-categories"
+                  aria-label="Быстрый выбор категории"
+                >
+                  {[
+                    ["Наследие", Landmark],
+                    ["Этнотуры", Tent],
+                    ["Музеи", Compass],
+                    ["Природа", Trees],
+                    ["Театры", Drama],
+                    ["Прогулки", Footprints],
+                  ].map(([name, Icon]) => {
+                    const CategoryIcon = Icon as typeof Landmark;
+                    return (
+                      <a
+                        href="#ideas"
+                        key={name as string}
+                        onClick={() => setCategory(name as string)}
+                      >
+                        <span>
+                          <CategoryIcon size={24} strokeWidth={1.6} />
+                        </span>
+                        <small className="quick-title">{name as string}</small>
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+              <a className="landscape-caption" href="/photos">
+                <MapPin size={14} /> Большое Алматинское озеро
+              </a>
+            </section>
+            <section className="city-section" aria-label="Выбор города">
+              <div className="section-title">
+                <div>
+                  <span className="eyebrow">С ЧЕГО НАЧНЁМ?</span>
+                  <h2>Выберите свой город</h2>
+                </div>
+                <span className="muted">Два города. Много историй.</span>
+              </div>
+              <div className="city-cards">
+                {cities.map((c) => (
+                  <a
+                    href="#ideas"
+                    key={c.slug}
+                    className="city-card"
+                    onClick={() => {
+                      setCity(c.slug);
+                      setQuery("");
+                      setCategory("Все");
+                    }}
+                  >
+                    <Photo photoKey={c.slug} />
+                    <div className="city-overlay">
+                      <div>
+                        <h3>{c.name}</h3>
+                        <p>
+                          {c.slug === "semey"
+                            ? "История · Культура · Иртыш"
+                            : "Горы · Искусство · Впечатления"}
+                        </p>
+                      </div>
+                      <span className="city-arrow">
+                        <ArrowUpRight size={22} />
+                      </span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </section>
+          </>
         ) : (
           <div className="page-heading">
             <div>
@@ -1605,16 +1744,18 @@ export function Shell() {
               </select>
             </label>
           </div>
-          <div className="search">
-            <Search size={20} />
-            <input
-              aria-label="Поиск мест"
-              type="search"
-              placeholder="Место, история или новое впечатление"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
+          {section !== "home" && (
+            <div className="search">
+              <Search size={20} />
+              <input
+                aria-label="Поиск мест"
+                type="search"
+                placeholder="Место, история или новое впечатление"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+              />
+            </div>
+          )}
           <div className="filters">
             {categories.map((c) => (
               <button
@@ -1702,8 +1843,8 @@ export function Shell() {
       <main>
         {!db && (
           <div className="demo-label">
-            ДЕМОПРОСМОТР · Идеи и иллюстрации для проверки интерфейса. Backend
-            ещё не подключён.
+            ДЕМОПРОСМОТР · Идеи для проверки интерфейса. Backend ещё не
+            подключён.
           </div>
         )}
         {!ready && <p role="status">Восстанавливаем сессию…</p>}
@@ -1730,6 +1871,7 @@ export function Shell() {
         <div>
           <a href="/privacy">О данных</a>
           <a href="/terms">Условия</a>
+          <a href="/photos">Фотографии</a>
         </div>
         <small>Закрытая тестовая версия · 2026</small>
       </footer>

@@ -7,6 +7,7 @@ import {
   Share,
   Linking,
   ActivityIndicator,
+  TextInput,
   Platform,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -14,6 +15,8 @@ import * as Crypto from "expo-crypto";
 import * as ExpoLinking from "expo-linking";
 import { api } from "@qayda/api-client";
 import {
+  photos,
+  listingPhoto,
   cities,
   categories,
   answerLabels,
@@ -204,14 +207,14 @@ export default function App() {
       onPress={() => go(`/listing/${x.id}`)}
       style={s.listing}
     >
-      <Art />
+      <Art listingId={x.id} height={165} />
       <View style={s.listBody}>
         <Text style={s.eyebrow}>
           {x.category} ·{" "}
           {x.origin === "demo_fixture" ? "Демоидея" : "Подробнее"}
         </Text>
         <Heading>{x.title}</Heading>
-        <Copy>{x.summary}</Copy>
+        <Copy lines={2}>{x.summary}</Copy>
         <Text style={s.price}>
           {x.price_minor !== null
             ? money(x.price_minor)
@@ -254,11 +257,48 @@ export default function App() {
         </Card>
       </>
     );
+  else if (section === "photos")
+    content = (
+      <>
+        {back}
+        <Heading>Фотографии Казахстана</Heading>
+        <Copy>
+          Фотографии уменьшены и кадрируются по размеру карточки. Спасибо
+          авторам за открытые снимки.
+        </Copy>
+        {Object.entries(photos).map(([key, photo]) => (
+          <Card key={key}>
+            <Art photoKey={key as keyof typeof photos} />
+            <Heading>{photo.alt}</Heading>
+            <Copy>
+              {photo.author} · {photo.license}
+            </Copy>
+            <Button
+              secondary
+              onPress={() => void Linking.openURL(photo.source)}
+            >
+              Оригинал и лицензия ↗
+            </Button>
+          </Card>
+        ))}
+      </>
+    );
   else if (section === "listing")
     content = l ? (
       <>
         {back}
-        <Art large />
+        <Art listingId={l.id} large />
+        {listingPhoto(l.id) && (
+          <Pressable
+            accessibilityRole="link"
+            onPress={() => go("/photos")}
+            style={{ paddingVertical: 10, minHeight: 44 }}
+          >
+            <Text style={s.label}>
+              Фото: {photos[listingPhoto(l.id)!].author} · Лицензия ↗
+            </Text>
+          </Pressable>
+        )}
         <Text style={s.eyebrow}>
           {l.category} · {cities.find((c) => c.slug === l.city)?.name}
         </Text>
@@ -352,6 +392,7 @@ export default function App() {
       <>
         {back}
         <Text style={s.h1}>Создать план</Text>
+        {l && <Art listingId={l.id} />}
         <Copy>{l?.title}</Copy>
         <Card>
           <Field label="Название плана" value={title} onChange={setTitle} />
@@ -418,6 +459,7 @@ export default function App() {
         <Text style={s.eyebrow}>
           {statusLabels[room.plan.status]} · версия {room.plan.version}
         </Text>
+        {room.plan.listing_id && <Art listingId={room.plan.listing_id} />}
         <Text style={s.h1}>{room.plan.title}</Text>
         <Copy>{planDate(room.plan.starts_at)}</Copy>
         <Copy>{room.plan.meeting_note}</Copy>
@@ -937,6 +979,7 @@ export default function App() {
               accessibilityRole="button"
             >
               <Card>
+                {p.listing_id && <Art listingId={p.listing_id} />}
                 <Text style={s.eyebrow}>{statusLabels[p.status]}</Text>
                 <Heading>{p.title}</Heading>
                 <Copy>{planDate(p.starts_at)}</Copy>
@@ -1200,19 +1243,100 @@ export default function App() {
     content = (
       <>
         {section === "home" && (
-          <View style={s.hero}>
-            <Text style={s.heroEyebrow}>КАЗАХСТАН БЛИЖЕ, ЧЕМ КАЖЕТСЯ</Text>
-            <Text style={s.heroTitle}>
-              Куда поедем{"\n"}
-              <Text style={{ color: color.sand }}>вместе?</Text>
-            </Text>
-            <Text style={s.heroCopy}>
-              Места с историей.{"\n"}Поездки с близкими.
-            </Text>
-            <Button secondary onPress={() => go("/explore")}>
-              Найти свою идею ↗
-            </Button>
-          </View>
+          <>
+            <View style={s.hero}>
+              <View style={s.heroInner}>
+                <Text style={s.heroMark}>⛰</Text>
+                <Text style={s.heroTitle}>Qayda</Text>
+                <Text style={s.heroTagline}>Открываем Казахстан вместе</Text>
+                <TextInput
+                  accessibilityLabel="Поиск мест"
+                  value={query}
+                  onChangeText={setQuery}
+                  placeholder="Куда вы хотите поехать?"
+                  placeholderTextColor={color.muted}
+                  style={s.input}
+                />
+                <View style={s.quickGrid}>
+                  {[
+                    ["Наследие", "🏛"],
+                    ["Этнотуры", "⛺"],
+                    ["Музеи", "🎨"],
+                    ["Природа", "🌲"],
+                    ["Театры", "🎭"],
+                    ["Прогулки", "🚶"],
+                  ].map(([name, icon], i) => (
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: category === name }}
+                      key={name}
+                      onPress={() => {
+                        setCategory(name);
+                        go("/explore");
+                      }}
+                      style={s.quickItem}
+                    >
+                      <View
+                        style={[
+                          s.quickDisc,
+                          {
+                            backgroundColor: [
+                              color.sand,
+                              color.peach,
+                              color.rose,
+                              color.mint,
+                              color.peach,
+                              color.mint,
+                            ][i],
+                          },
+                        ]}
+                      >
+                        <Text style={{ fontSize: 24 }}>{icon}</Text>
+                      </View>
+                      <Text style={s.quickLabel}>{name}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
+              <View style={s.heroLandscape}>
+                <Art photoKey="lake" height={180} />
+                <Pressable
+                  accessibilityRole="link"
+                  onPress={() => go("/photos")}
+                  style={s.landscapeCaption}
+                >
+                  <Text style={s.quickLabel}>Большое Алматинское озеро ↗</Text>
+                </Pressable>
+              </View>
+            </View>
+            <Heading>Выберите свой город</Heading>
+            <View style={s.cityGrid}>
+              {cities.map((c) => (
+                <Pressable
+                  accessibilityRole="button"
+                  key={c.slug}
+                  accessibilityLabel={`Открыть ${c.name}`}
+                  onPress={() => {
+                    setCity(c.slug);
+                    setCategory("Все");
+                    setQuery("");
+                    go("/explore");
+                  }}
+                  style={s.cityCard}
+                >
+                  <Art photoKey={c.slug} height={140} />
+                  <View style={s.cityCaption}>
+                    <Text style={s.cityTitle}>{c.name}</Text>
+                    <Text style={s.label}>
+                      {c.slug === "semey"
+                        ? "История · Культура"
+                        : "Горы · Искусство"}
+                    </Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </>
         )}
         <Text style={s.h1}>
           {section === "saved"
@@ -1232,12 +1356,14 @@ export default function App() {
             </Button>
           ))}
         </View>
-        <Field
-          label="Поиск мест"
-          value={query}
-          onChange={setQuery}
-          placeholder="Место или впечатление"
-        />
+        {section !== "home" && (
+          <Field
+            label="Поиск мест"
+            value={query}
+            onChange={setQuery}
+            placeholder="Место или впечатление"
+          />
+        )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.chips}>
             {categories.map((c) => (

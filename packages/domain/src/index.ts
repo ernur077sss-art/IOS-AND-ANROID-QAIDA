@@ -358,3 +358,5 @@ export function searchCatalogue(
       `${l.title} ${l.summary}`.toLocaleLowerCase("ru").includes(text),
   );
 }
+
+export { photos, listingPhoto, type PhotoKey } from "./media";

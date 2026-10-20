@@ -1,0 +1,37 @@
+{
+  "name": "qayda",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace @qayda/web -- --port 3002",
+    "mobile": "npm run start -w @qayda/mobile",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "build": "npm run build -w @qayda/web",
+    "check": "npm run typecheck && npm run lint && npm test && npm run test:db && npm run build",
+    "test:e2e": "playwright test",
+    "test:db": "node scripts/test-db.mjs",
+    "format": "prettier --write apps packages tests scripts *.json *.ts *.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.3.14",
+    "@eslint/js": "^9.39.0",
+    "@playwright/test": "^1.56.0",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.2.0",
+    "eslint": "^9.39.0",
+    "prettier": "^3.9.10",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.0",
+    "vitest": "^4.0.0"
+  },
+  "type": "module"
+}

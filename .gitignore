@@ -1,5 +1,6 @@
 node_modules/
 .next/
+.next-test/
 .expo/
 dist/
 coverage/
@@ -15,3 +16,6 @@ apps/mobile/android/
 test-results/
 playwright-report/
 .DS_Store
+supabase/.temp/
+supabase/.branches/
+apps/web/next-env.d.ts

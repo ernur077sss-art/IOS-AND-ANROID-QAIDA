@@ -1,0 +1,15 @@
+project_id = "qayda-qodex-mobile"
+[api]
+enabled = true
+schemas = ["public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 200
+[db]
+major_version = 17
+[auth]
+enabled = true
+site_url = "http://127.0.0.1:3002"
+additional_redirect_urls = ["qayda://login", "qayda:///login", "http://127.0.0.1:3002/auth/callback", "http://localhost:3002/auth/callback"]
+[auth.email]
+enable_signup = true
+enable_confirmations = true

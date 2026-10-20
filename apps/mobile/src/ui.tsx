@@ -1,7 +1,8 @@
+import { usePreferences } from "./Preferences";
 import type { ReactNode } from "react";
 import { View, Text, TextInput, Pressable, Image } from "react-native";
 import { photos, listingPhoto, type PhotoKey } from "@qayda/domain";
-import { color, s } from "./theme";
+import { color, useStyles } from "./theme";
 export function Button({
   children,
   onPress,
@@ -13,6 +14,8 @@ export function Button({
   secondary?: boolean;
   disabled?: boolean;
 }) {
+  const { t } = usePreferences();
+  const s = useStyles();
   return (
     <Pressable
       accessibilityRole="button"
@@ -26,7 +29,7 @@ export function Button({
       ]}
     >
       <Text style={[s.buttonText, secondary && s.secondaryText]}>
-        {children}
+        {typeof children === "string" ? t(children) : children}
       </Text>
     </Pressable>
   );
@@ -46,14 +49,16 @@ export function Field({
   keyboardType?: "default" | "email-address" | "numeric" | "decimal-pad";
   multiline?: boolean;
 }) {
+  const { t } = usePreferences();
+  const s = useStyles();
   return (
     <View style={s.field}>
-      <Text style={s.label}>{label}</Text>
+      <Text style={s.label}>{t(label)}</Text>
       <TextInput
-        accessibilityLabel={label}
+        accessibilityLabel={t(label)}
         value={value}
         onChangeText={onChange}
-        placeholder={placeholder}
+        placeholder={placeholder ? t(placeholder) : undefined}
         placeholderTextColor={color.muted}
         keyboardType={keyboardType}
         autoCapitalize={keyboardType === "email-address" ? "none" : "sentences"}
@@ -95,6 +100,8 @@ export function Art({
   listingId?: string;
   photoKey?: PhotoKey;
 }) {
+  const { t } = usePreferences();
+  const s = useStyles();
   const key = photoKey ?? listingPhoto(listingId);
   return (
     <View
@@ -107,23 +114,30 @@ export function Art({
       {key ? (
         <Image
           source={photoSources[key]}
-          accessibilityLabel={photos[key].alt}
+          accessibilityLabel={t(photos[key].alt)}
           style={{ width: "100%", height: "100%" }}
           resizeMode="cover"
         />
       ) : (
         <View style={s.photoPending}>
-          <Text style={s.copy}>Здесь будет фото места</Text>
+          <Text style={s.copy}>{t("Здесь будет фото места")}</Text>
         </View>
       )}
     </View>
   );
 }
 export function Card({ children }: { children: ReactNode }) {
+  const s = useStyles();
   return <View style={s.card}>{children}</View>;
 }
 export function Heading({ children }: { children: ReactNode }) {
-  return <Text style={s.h2}>{children}</Text>;
+  const { t } = usePreferences();
+  const s = useStyles();
+  return (
+    <Text accessibilityRole="header" style={s.h2}>
+      {typeof children === "string" ? t(children) : children}
+    </Text>
+  );
 }
 export function Copy({
   children,
@@ -132,9 +146,11 @@ export function Copy({
   children: ReactNode;
   lines?: number;
 }) {
+  const { t, large } = usePreferences();
+  const s = useStyles();
   return (
-    <Text style={s.copy} numberOfLines={lines}>
-      {children}
+    <Text style={s.copy} numberOfLines={large ? undefined : lines}>
+      {typeof children === "string" ? t(children) : children}
     </Text>
   );
 }

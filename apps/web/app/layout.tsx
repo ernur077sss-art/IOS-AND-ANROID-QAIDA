@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { PreferencesProvider } from "../components/Preferences";
 export const metadata: Metadata = {
   title: "Qayda — открывай Казахстан со своими",
   description: "Места, впечатления и совместные планы в Казахстане",
@@ -12,7 +13,9 @@ export const metadata: Metadata = {
 export default function Layout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="ru">
-      <body>{children}</body>
+      <body>
+        <PreferencesProvider>{children}</PreferencesProvider>
+      </body>
     </html>
   );
 }

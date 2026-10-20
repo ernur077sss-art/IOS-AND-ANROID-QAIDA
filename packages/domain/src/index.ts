@@ -1,3 +1,4 @@
+import { localizeListing } from "./localization";
 export type City = "semey" | "almaty";
 export type PlanStatus =
   "draft" | "proposed" | "confirmed" | "cancelled" | "completed";
@@ -361,7 +362,9 @@ export function searchCatalogue(
     (l) =>
       l.city === target &&
       (category === "Все" || l.category === category) &&
-      normalize(`${l.title} ${l.summary}`).includes(text),
+      normalize(
+        `${l.title} ${l.summary} ${localizeListing(l, "kk").title} ${localizeListing(l, "kk").summary}`,
+      ).includes(text),
   );
 }
 
@@ -393,3 +396,5 @@ export * from "./providers";
 export * from "./provider-forms";
 
 export { productFeatures } from "./features";
+
+export * from "./localization";

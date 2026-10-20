@@ -1,0 +1,27 @@
+{
+  "title": "Сеть учреждений культуры на 1 января 2026 года",
+  "publisher": "Бюро национальной статистики Республики Казахстан",
+  "as_of": "2026-01-01",
+  "checked_at": "2026-10-21",
+  "source_url": "https://stat.gov.kz/ru/industries/social-statistics/stat-culture/publications/341122/",
+  "download_url": "https://stat.gov.kz/upload/iblock/c02/1oqfioovi1vu8kmxa252sxgzb84eeu5r/%D1%80%D1%83%D1%81.xlsx",
+  "sha256": "a5791699c04be99ef7ed98f2b75aabfaec0fb879b07bca2c4dfd08b94077c219",
+  "sheet": "рус",
+  "columns": {
+    "region": "B",
+    "theatres": "C",
+    "museums": "D"
+  },
+  "regions": {
+    "semey": {
+      "name": "Область Абай",
+      "museums": 10,
+      "theatres": 2
+    },
+    "almaty": {
+      "name": "Город Алматы",
+      "museums": 22,
+      "theatres": 7
+    }
+  }
+}

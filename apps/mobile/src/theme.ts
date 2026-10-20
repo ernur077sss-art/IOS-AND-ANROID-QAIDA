@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+import { usePreferences } from "./Preferences";
 import { StyleSheet, Platform } from "react-native";
 export const color = {
   forest: "#214e43",
@@ -14,6 +16,16 @@ export const color = {
   rose: "#f5e1e2",
 };
 export const s = StyleSheet.create({
+  preferenceButton: {
+    minHeight: 44,
+    paddingHorizontal: 10,
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: color.forest,
+    borderRadius: 10,
+  },
+  preferenceSelected: { backgroundColor: color.mint },
+  preferenceText: { fontSize: 13, fontWeight: "600", color: color.ink },
   root: { flex: 1, backgroundColor: color.bg },
   top: {
     paddingHorizontal: 20,
@@ -56,7 +68,7 @@ export const s = StyleSheet.create({
     marginVertical: 8,
     letterSpacing: -0.5,
   },
-  copy: { fontSize: 14, lineHeight: 22, color: color.muted, marginBottom: 10 },
+  copy: { fontSize: 16, lineHeight: 25, color: color.muted, marginBottom: 10 },
   eyebrow: {
     fontSize: 10,
     letterSpacing: 1.3,
@@ -116,7 +128,7 @@ export const s = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  quickLabel: { fontSize: 11, color: color.ink },
+  quickLabel: { fontSize: 13, color: color.ink },
   cityGrid: { flexDirection: "row", gap: 12 },
   cityCard: {
     flex: 1,
@@ -164,7 +176,7 @@ export const s = StyleSheet.create({
   secondaryText: { color: color.ink },
   dim: { opacity: 0.5 },
   field: { gap: 7, marginVertical: 6 },
-  label: { fontSize: 12, color: color.muted },
+  label: { fontSize: 14, color: color.muted },
   input: {
     backgroundColor: color.white,
     borderWidth: 1,
@@ -175,7 +187,7 @@ export const s = StyleSheet.create({
     fontSize: 16,
     color: color.ink,
   },
-  chips: { flexDirection: "row", gap: 8, paddingVertical: 4 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8, paddingVertical: 4 },
   listing: {
     borderRadius: 20,
     borderWidth: 1,
@@ -235,6 +247,34 @@ export const s = StyleSheet.create({
     minWidth: 64,
   },
   navIcon: { fontSize: 23, color: color.muted },
-  navLabel: { fontSize: 10, color: color.muted },
+  navLabel: { fontSize: 13, color: color.muted },
   active: { color: color.forest, fontWeight: "700" },
 });
+
+/** OS font scaling remains enabled; the explicit reading preference adds 20%. */
+export function useStyles(): typeof s {
+  const { large } = usePreferences();
+  return useMemo(
+    () =>
+      large
+        ? (Object.fromEntries(
+            Object.entries(s).map(([key, value]) => {
+              const style = value as { fontSize?: number; lineHeight?: number };
+              return [
+                key,
+                {
+                  ...value,
+                  ...(style.fontSize
+                    ? { fontSize: Math.round(style.fontSize * 1.2) }
+                    : {}),
+                  ...(style.lineHeight
+                    ? { lineHeight: Math.round(style.lineHeight * 1.2) }
+                    : {}),
+                },
+              ];
+            }),
+          ) as typeof s)
+        : s,
+    [large],
+  );
+}

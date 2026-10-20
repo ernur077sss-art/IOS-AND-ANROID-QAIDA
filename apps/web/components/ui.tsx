@@ -1,3 +1,5 @@
+"use client";
+import { usePreferences } from "./Preferences";
 import type { ReactNode } from "react";
 import Image from "next/image";
 import { Compass, Camera } from "lucide-react";
@@ -21,9 +23,10 @@ export function Field({
   hint?: string;
   error?: string;
 }) {
+  const { t } = usePreferences();
   return (
     <label className="field">
-      {label}
+      {t(label)}
       <input
         id={name}
         aria-invalid={error ? true : undefined}
@@ -32,7 +35,7 @@ export function Field({
         type={type}
         required={required}
         defaultValue={defaultValue}
-        placeholder={placeholder}
+        placeholder={placeholder ? t(placeholder) : undefined}
         maxLength={type === "text" ? 500 : undefined}
       />
       {(error || hint) && (
@@ -41,7 +44,7 @@ export function Field({
           className={error ? "field-error" : "muted"}
           role={error ? "alert" : undefined}
         >
-          {error || hint}
+          {t(error || hint || "")}
         </small>
       )}
     </label>
@@ -60,6 +63,7 @@ export function Photo({
   large?: boolean;
   eager?: boolean;
 }) {
+  const { t } = usePreferences();
   const key = photoKey ?? listingPhoto(listingId);
   const photo = key ? photos[key] : undefined;
   return (
@@ -67,7 +71,7 @@ export function Photo({
       {photo && key ? (
         <Image
           src={`/photos/${key}-20261020.jpg`}
-          alt={photo.alt}
+          alt={t(photo.alt)}
           fill
           sizes={
             large
@@ -80,19 +84,22 @@ export function Photo({
       ) : (
         <div className="photo-pending">
           <Camera size={30} />
-          <span>Здесь будет фото места</span>
+          <span>{t("Здесь будет фото места")}</span>
         </div>
       )}
-      {category && <span className="photo-category">{category}</span>}
+      {category && <span className="photo-category">{t(category)}</span>}
     </div>
   );
 }
 export function PhotoCredit({ listingId }: { listingId: string }) {
+  const { t } = usePreferences();
   const key = listingPhoto(listingId);
   if (!key) return null;
   return (
     <p className="photo-credit">
-      Фото: {photos[key].author} · <a href="/photos">Авторы и лицензии</a>
+      {" "}
+      {t("Фото:")} {t(photos[key].author)} ·{" "}
+      <a href="/photos">{t("Авторы и лицензии")}</a>
     </p>
   );
 }
@@ -103,10 +110,11 @@ export function Empty({
   title: string;
   children: ReactNode;
 }) {
+  const { t } = usePreferences();
   return (
     <div className="empty">
       <Compass size={28} />
-      <h3>{title}</h3>
+      <h3>{t(title)}</h3>
       <p>{children}</p>
     </div>
   );

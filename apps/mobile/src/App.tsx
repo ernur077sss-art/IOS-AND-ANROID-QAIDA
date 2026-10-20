@@ -1,3 +1,5 @@
+import { usePreferences } from "./Preferences";
+import { localizeListing, cultureData } from "@qayda/domain";
 import type { ReactNode } from "react";
 import {
   View,
@@ -36,9 +38,11 @@ import { useModel } from "./model";
 import { Button, Field, Art, Card, Heading, Copy } from "./ui";
 import { useLocalSearchParams } from "expo-router";
 import { NativeProvidersHub } from "./ProvidersHub";
-import { color, s } from "./theme";
+import { color, useStyles } from "./theme";
 export { NativeProvider } from "./model";
 export default function App() {
+  const { t, locale, setLocale, large, setLarge } = usePreferences();
+  const s = useStyles();
   const model = useModel();
   const params = useLocalSearchParams<{ place?: string }>();
   const {
@@ -114,10 +118,14 @@ export default function App() {
     act,
     catalog,
     refresh,
-    l,
+    l: originalListing,
     owner,
     auth,
   } = model;
+  const l = originalListing
+    ? localizeListing(originalListing, locale)
+    : undefined;
+  const culture = cultureData.regions[city as "semey" | "almaty"];
   const going =
     room?.rsvps
       .filter(
@@ -136,32 +144,40 @@ export default function App() {
       secondary
       onPress={() => (router.canGoBack() ? router.back() : go("/"))}
     >
-      ← Назад
+      {" "}
+      {t("← Назад")}{" "}
     </Button>
   );
   const login = (
     <Card>
       <Text style={s.eyebrow}>
         {productFeatures.tripPlanning
-          ? "СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ"
-          : "ВАШИ ЛЮБИМЫЕ МЕСТА"}
+          ? t("СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ")
+          : t("ВАШИ ЛЮБИМЫЕ МЕСТА")}
       </Text>
-      <Text style={s.h1}>Вход в Qayda</Text>
+      <Text accessibilityRole="header" style={s.h1}>
+        {t("Вход в Qayda")}
+      </Text>
       <Copy>
         {productFeatures.tripPlanning
-          ? "Войдите, чтобы создавать планы и отвечать друзьям."
-          : "Войдите, чтобы сохранять понравившиеся места."}
+          ? t("Войдите, чтобы создавать планы и отвечать друзьям.")
+          : t("Войдите, чтобы сохранять понравившиеся места.")}
       </Copy>
       {!db ? (
         <Copy>
-          Backend пока не подключён. Можно посмотреть демонстрационный каталог.
+          {" "}
+          {t(
+            "Backend пока не подключён. Можно посмотреть демонстрационный каталог.",
+          )}{" "}
         </Copy>
       ) : (
         <>
-          <Field label="Ваше имя" value={name} onChange={setName} />
+          <Field label={t("Ваше имя")} value={name} onChange={setName} />
           <Copy>
-            Вход по имени сохраняется на этом устройстве. После выхода или
-            очистки приложения восстановить его нельзя.
+            {" "}
+            {t(
+              "Вход по имени сохраняется на этом устройстве. После выхода или очистки приложения восстановить его нельзя.",
+            )}{" "}
           </Copy>
           <Button
             disabled={busy || !name.trim()}
@@ -186,9 +202,10 @@ export default function App() {
               })
             }
           >
-            Продолжить по имени
+            {" "}
+            {t("Продолжить по имени")}{" "}
           </Button>
-          <Copy>Или войдите по email</Copy>
+          <Copy>{t("Или войдите по email")}</Copy>
           {!sent ? (
             <Field
               label="Email"
@@ -198,7 +215,7 @@ export default function App() {
             />
           ) : (
             <Field
-              label="Код из письма"
+              label={t("Код из письма")}
               value={code}
               onChange={setCode}
               keyboardType="numeric"
@@ -238,42 +255,46 @@ export default function App() {
               })
             }
           >
-            {sent ? "Войти по коду" : "Получить письмо для входа"}
+            {sent ? t("Войти по коду") : t("Получить письмо для входа")}
           </Button>
           {sent && (
             <Button secondary onPress={() => setSent(false)}>
-              Другой email
+              {" "}
+              {t("Другой email")}{" "}
             </Button>
           )}
         </>
       )}
     </Card>
   );
-  const listCard = (x: Listing) => (
-    <Pressable
-      key={x.id}
-      accessibilityRole="button"
-      accessibilityLabel={x.title}
-      onPress={() => go(`/listing/${x.id}`)}
-      style={s.listing}
-    >
-      <Art listingId={x.id} height={165} />
-      <View style={s.listBody}>
-        <Text style={s.eyebrow}>
-          {x.category} ·{" "}
-          {x.origin === "demo_fixture" ? "Демоидея" : "Подробнее"}
-        </Text>
-        <Heading>{x.title}</Heading>
-        <Copy lines={2}>{x.summary}</Copy>
-        <Text style={s.price}>
-          {x.price_minor !== null
-            ? money(x.price_minor)
-            : "Стоимость уточняется"}{" "}
-          →
-        </Text>
-      </View>
-    </Pressable>
-  );
+  const listCard = (record: Listing) => {
+    const x = localizeListing(record, locale);
+    return (
+      <Pressable
+        key={x.id}
+        accessibilityRole="button"
+        accessibilityLabel={x.title}
+        onPress={() => go(`/listing/${x.id}`)}
+        style={s.listing}
+      >
+        <Art listingId={x.id} height={165} />
+        <View style={s.listBody}>
+          <Text style={s.eyebrow}>
+            {t(x.category)} ·{" "}
+            {x.origin === "demo_fixture" ? t("Демоидея") : t("Подробнее")}
+          </Text>
+          <Heading>{x.title}</Heading>
+          <Copy lines={2}>{x.summary}</Copy>
+          <Text style={s.price}>
+            {x.price_minor !== null
+              ? money(x.price_minor)
+              : t("Стоимость уточняется")}{" "}
+            →
+          </Text>
+        </View>
+      </Pressable>
+    );
+  };
   let content: ReactNode;
   if (section === "login") content = login;
   else if (["providers", "partner", "request", "requests"].includes(section))
@@ -294,13 +315,18 @@ export default function App() {
       <>
         {back}
         <Card>
-          <Text style={s.eyebrow}>ВАС ПРИГЛАШАЮТ</Text>
-          <Text style={s.h1}>{preview || "Совместный план"}</Text>
+          <Text style={s.eyebrow}>{t("ВАС ПРИГЛАШАЮТ")}</Text>
+          <Text accessibilityRole="header" style={s.h1}>
+            {preview || "Совместный план"}
+          </Text>
           <Copy>
-            До вступления детали компании скрыты. Ответ не бронирует билет.
+            {" "}
+            {t(
+              "До вступления детали компании скрыты. Ответ не бронирует билет.",
+            )}{" "}
           </Copy>
           {!token ? (
-            <Copy>Откройте полную ссылку от организатора.</Copy>
+            <Copy>{t("Откройте полную ссылку от организатора.")}</Copy>
           ) : user ? (
             <Button
               disabled={busy || !preview}
@@ -312,7 +338,8 @@ export default function App() {
                 })
               }
             >
-              Вступить в компанию
+              {" "}
+              {t("Вступить в компанию")}{" "}
             </Button>
           ) : (
             login
@@ -324,25 +351,27 @@ export default function App() {
     content = (
       <>
         {back}
-        <Heading>Фотографии Казахстана</Heading>
+        <Heading>{t("Фотографии Казахстана")}</Heading>
         <Copy>
-          Фотографии уменьшены и кадрируются по размеру карточки. Спасибо
-          авторам за предоставленные снимки.
+          {" "}
+          {t(
+            "Фотографии уменьшены и кадрируются по размеру карточки. Спасибо авторам за предоставленные снимки.",
+          )}{" "}
         </Copy>
         {Object.entries(photos).map(([key, photo]) => (
           <Card key={key}>
             <Art photoKey={key as keyof typeof photos} />
             <Heading>{photo.alt}</Heading>
             <Copy>
-              {photo.author} · {photo.license}
+              {t(photo.author)} · {t(photo.license)}
             </Copy>
             <Button
               secondary
               onPress={() => void Linking.openURL(photo.source)}
             >
               {photo.licenseUrl
-                ? "Оригинал и лицензия ↗"
-                : "Открыть фотографию ↗"}
+                ? t("Оригинал и лицензия ↗")
+                : t("Открыть фотографию ↗")}
             </Button>
           </Card>
         ))}
@@ -360,23 +389,30 @@ export default function App() {
             style={{ paddingVertical: 10, minHeight: 44 }}
           >
             <Text style={s.label}>
-              Фото: {photos[listingPhoto(l.id)!].author} · Лицензия ↗
+              {" "}
+              {t("Фото:")} {t(photos[listingPhoto(l.id)!].author)}{" "}
+              {t("· Лицензия ↗")}{" "}
             </Text>
           </Pressable>
         )}
         <Text style={s.eyebrow}>
-          {l.category} · {cities.find((c) => c.slug === l.city)?.name}
+          {t(l.category)} ·{" "}
+          {t(cities.find((c) => c.slug === l.city)?.name ?? "")}
         </Text>
-        <Text style={s.h1}>{l.title}</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {l.title}
+        </Text>
         {l.origin === "demo_fixture" && (
           <Text style={s.banner}>
-            Демоидея. Маршрут и условия ещё не проверены.
+            {" "}
+            {t("Демоидея. Маршрут и условия ещё не проверены.")}{" "}
           </Text>
         )}
         <Copy>{l.summary}</Copy>
         {productFeatures.providers && (
           <Button onPress={() => go(`/providers?place=${l.id}`)}>
-            Найти гида, водителя или турфирму
+            {" "}
+            {t("Найти гида, водителя или турфирму")}{" "}
           </Button>
         )}
         <Card>
@@ -384,24 +420,26 @@ export default function App() {
           <Copy>
             {l.price_minor
               ? money(l.price_minor)
-              : "Стоимость уточнить у организатора"}
+              : t("Стоимость уточнить у организатора")}
           </Copy>
           <Copy>
             {l.checked_at
-              ? `Проверено ${planDate(l.checked_at)}`
-              : "Дата проверки пока не указана"}
+              ? `${t("Проверено")} ${new Intl.DateTimeFormat(locale === "kk" ? "kk-KZ" : "ru-RU", { dateStyle: "medium", timeZone: "Asia/Almaty" }).format(new Date(l.checked_at))}`
+              : t("Дата проверки пока не указана")}
           </Copy>
           {safeUrl(l.source_url) && (
             <Button
               secondary
               onPress={() => void Linking.openURL(safeUrl(l.source_url)!)}
             >
-              Источник сведений ↗
+              {" "}
+              {t("Источник сведений ↗")}{" "}
             </Button>
           )}
           {mapUrl(l) && (
             <Button secondary onPress={() => void Linking.openURL(mapUrl(l)!)}>
-              Открыть карту ↗
+              {" "}
+              {t("Открыть карту ↗")}{" "}
             </Button>
           )}
         </Card>
@@ -416,7 +454,8 @@ export default function App() {
               }
             }}
           >
-            Собрать компанию
+            {" "}
+            {t("Собрать компанию")}{" "}
           </Button>
         )}
         <Button
@@ -430,11 +469,13 @@ export default function App() {
               });
           }}
         >
-          {saved.includes(l.id) ? "Убрать из сохранённого" : "♡ Сохранить"}
+          {saved.includes(l.id)
+            ? t("Убрать из сохранённого")
+            : t("♡ Сохранить")}
         </Button>
         <Card>
           <Field
-            label="Сообщить об ошибке в карточке"
+            label={t("Сообщить об ошибке в карточке")}
             value={reportReason}
             onChange={setReportReason}
           />
@@ -450,12 +491,13 @@ export default function App() {
                 });
             }}
           >
-            Отправить на проверку
+            {" "}
+            {t("Отправить на проверку")}{" "}
           </Button>
         </Card>
       </>
     ) : (
-      <Copy>Место не найдено. Вернитесь в каталог.</Copy>
+      <Copy>{t("Место не найдено. Вернитесь в каталог.")}</Copy>
     );
   else if (section === "create")
     content = !user ? (
@@ -463,17 +505,24 @@ export default function App() {
     ) : (
       <>
         {back}
-        <Text style={s.h1}>Создать план</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {t("Создать план")}
+        </Text>
         {l && <Art listingId={l.id} />}
         <Copy>{l?.title}</Copy>
         <Card>
-          <Field label="Название плана" value={title} onChange={setTitle} />
-          <Copy>Компания</Copy>
+          <Field
+            label={t("Название плана")}
+            value={title}
+            onChange={setTitle}
+          />
+          <Copy>{t("Компания")}</Copy>
           <Button
             secondary={selectedGroup !== ""}
             onPress={() => setSelectedGroup("")}
           >
-            Новая компания
+            {" "}
+            {t("Новая компания")}{" "}
           </Button>
           {plans
             .filter(
@@ -491,16 +540,22 @@ export default function App() {
               </Button>
             ))}
           <Field
-            label="Дата и время · Алматы (UTC+5)"
+            label={t("Дата и время · Алматы (UTC+5)")}
             value={starts}
             onChange={setStarts}
             placeholder="2026-11-01T11:00"
           />
           <Copy>
-            Выберите будущую дату и время Алматы. Планировать можно на ближайшие
-            два года.
+            {" "}
+            {t(
+              "Выберите будущую дату и время Алматы. Планировать можно на ближайшие два года.",
+            )}{" "}
           </Copy>
-          <Field label="Место встречи" value={meeting} onChange={setMeeting} />
+          <Field
+            label={t("Место встречи")}
+            value={meeting}
+            onChange={setMeeting}
+          />
           <Button
             disabled={busy || !l}
             onPress={() =>
@@ -519,7 +574,8 @@ export default function App() {
               })
             }
           >
-            Создать план
+            {" "}
+            {t("Создать план")}{" "}
           </Button>
         </Card>
       </>
@@ -528,15 +584,17 @@ export default function App() {
     content = !user ? (
       login
     ) : !room ? (
-      <Copy>{error ? "План недоступен" : "Загружаем план…"}</Copy>
+      <Copy>{error ? t("План недоступен") : t("Загружаем план…")}</Copy>
     ) : (
       <>
         {back}
         <Text style={s.eyebrow}>
-          {statusLabels[room.plan.status]} · версия {room.plan.version}
+          {statusLabels[room.plan.status]} {t("· версия")} {room.plan.version}
         </Text>
         {room.plan.listing_id && <Art listingId={room.plan.listing_id} />}
-        <Text style={s.h1}>{room.plan.title}</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {room.plan.title}
+        </Text>
         <Copy>{planDate(room.plan.starts_at)}</Copy>
         <Copy>{room.plan.meeting_note}</Copy>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -551,15 +609,18 @@ export default function App() {
         {tab === "План" && (
           <>
             <Card>
-              <Heading>Вы с нами?</Heading>
-              <Copy>RSVP — намерение пойти. Билеты оформляются отдельно.</Copy>
+              <Heading>{t("Вы с нами?")}</Heading>
+              <Copy>
+                {t("RSVP — намерение пойти. Билеты оформляются отдельно.")}
+              </Copy>
               {room.rsvps.find(
                 (r) =>
                   r.user_id === user &&
                   r.acknowledged_version !== room.plan.version,
               ) && (
                 <Text style={s.banner}>
-                  План изменился. Подтвердите участие заново.
+                  {" "}
+                  {t("План изменился. Подтвердите участие заново.")}{" "}
                 </Text>
               )}
               {(Object.keys(answerLabels) as Answer[]).map((a) => (
@@ -590,7 +651,7 @@ export default function App() {
             </Card>
             {owner && (
               <Card>
-                <Heading>Управление планом</Heading>
+                <Heading>{t("Управление планом")}</Heading>
                 {(room.plan.status === "draft"
                   ? ["publish", "cancel"]
                   : room.plan.status === "proposed"
@@ -625,12 +686,15 @@ export default function App() {
                 ) && (
                   <>
                     <Field
-                      label="Новое время · ГГГГ-ММ-ДДTЧЧ:ММ"
+                      label={t("Новое время · ГГГГ-ММ-ДДTЧЧ:ММ")}
                       value={starts}
                       onChange={setStarts}
                     />
                     <Copy>
-                      Изменение времени потребует новых ответов участников.
+                      {" "}
+                      {t(
+                        "Изменение времени потребует новых ответов участников.",
+                      )}{" "}
                     </Copy>
                     <Button
                       secondary
@@ -651,7 +715,8 @@ export default function App() {
                         })
                       }
                     >
-                      Изменить время
+                      {" "}
+                      {t("Изменить время")}{" "}
                     </Button>
                     <Button
                       disabled={busy || room.plan.status === "draft"}
@@ -670,11 +735,14 @@ export default function App() {
                         })
                       }
                     >
-                      Пригласить друзей ↗
+                      {" "}
+                      {t("Пригласить друзей ↗")}{" "}
                     </Button>
                     <Copy>
-                      Ссылка даёт возможность вступить. Срок — 7 дней, до 20
-                      вступлений.
+                      {" "}
+                      {t(
+                        "Ссылка даёт возможность вступить. Срок — 7 дней, до 20 вступлений.",
+                      )}{" "}
                     </Copy>
                     {room.invitations
                       .filter((i) => !i.revoked_at)
@@ -690,7 +758,8 @@ export default function App() {
                             })
                           }
                         >
-                          Отозвать ссылку · {i.uses_count}/{i.max_uses}
+                          {" "}
+                          {t("Отозвать ссылку ·")} {i.uses_count}/{i.max_uses}
                         </Button>
                       ))}
                   </>
@@ -698,27 +767,32 @@ export default function App() {
               </Card>
             )}
             <Button secondary onPress={() => go(`/calendar/${id}`)}>
-              Добавить в календарь
+              {" "}
+              {t("Добавить в календарь")}{" "}
             </Button>
           </>
         )}
         {tab === "Участники" && (
           <Card>
-            <Heading>Компания · {room.members.length}</Heading>
+            <Heading>
+              {t("Компания ·")} {room.members.length}
+            </Heading>
             {room.members.map((m) => {
               const r = room.rsvps.find((r) => r.user_id === m.user_id);
               return (
                 <View key={m.user_id} style={s.member}>
                   <Text style={s.memberName}>
                     {m.display_name}
-                    {m.user_id === room.plan.owner_id ? " · организатор" : ""}
+                    {m.user_id === room.plan.owner_id
+                      ? t(" · организатор")
+                      : ""}
                   </Text>
                   <Copy>
                     {r
                       ? r.acknowledged_version === room.plan.version
                         ? answerLabels[r.answer]
-                        : "Нужно подтвердить"
-                      : "Не ответил"}
+                        : t("Нужно подтвердить")
+                      : t("Не ответил")}
                   </Copy>
                   {owner && m.user_id !== user && (
                     <>
@@ -732,7 +806,8 @@ export default function App() {
                           })
                         }
                       >
-                        Удалить участника
+                        {" "}
+                        {t("Удалить участника")}{" "}
                       </Button>
                       <Button
                         secondary
@@ -744,7 +819,8 @@ export default function App() {
                           })
                         }
                       >
-                        Передать владение
+                        {" "}
+                        {t("Передать владение")}{" "}
                       </Button>
                     </>
                   )}
@@ -762,14 +838,15 @@ export default function App() {
                   })
                 }
               >
-                Выйти из компании
+                {" "}
+                {t("Выйти из компании")}{" "}
               </Button>
             )}
           </Card>
         )}
         {tab === "Обсуждение" && (
           <Card>
-            <Heading>Обсуждение</Heading>
+            <Heading>{t("Обсуждение")}</Heading>
             {room.messages.length >= 50 && !olderDone && (
               <Button
                 secondary
@@ -785,11 +862,15 @@ export default function App() {
                   })
                 }
               >
-                Загрузить более ранние
+                {" "}
+                {t("Загрузить более ранние")}{" "}
               </Button>
             )}
             <Copy>
-              Последние 50 сообщений. Нажмите «Обновить», чтобы получить новые.
+              {" "}
+              {t(
+                "Последние 50 сообщений. Нажмите «Обновить», чтобы получить новые.",
+              )}{" "}
             </Copy>
             {room.messages.map((m) => (
               <View key={m.id} style={s.message}>
@@ -802,7 +883,7 @@ export default function App() {
               </View>
             ))}
             <Field
-              label="Сообщение"
+              label={t("Сообщение")}
               value={body}
               onChange={setBody}
               multiline
@@ -819,22 +900,26 @@ export default function App() {
                 })
               }
             >
-              Отправить
+              {" "}
+              {t("Отправить")}{" "}
             </Button>
           </Card>
         )}
         {tab === "Бюджет" && (
           <Card>
-            <Heading>Расходы компании</Heading>
+            <Heading>{t("Расходы компании")}</Heading>
             <Copy>
-              Пользовательская оценка. Qayda не принимает и не переводит деньги.
+              {" "}
+              {t(
+                "Пользовательская оценка. Qayda не принимает и не переводит деньги.",
+              )}{" "}
             </Copy>
             {room.items.map((i) => (
               <View key={i.id} style={s.member}>
                 <Text style={s.memberName}>{i.title}</Text>
                 <Copy>
                   {money(i.amount_minor)} ·{" "}
-                  {i.cost_kind === "shared" ? "на всех" : "на человека"}
+                  {i.cost_kind === "shared" ? t("на всех") : t("на человека")}
                 </Copy>
                 {owner && (
                   <Button
@@ -849,7 +934,8 @@ export default function App() {
                       setKind(i.cost_kind);
                     }}
                   >
-                    Изменить статью
+                    {" "}
+                    {t("Изменить статью")}{" "}
                   </Button>
                 )}
                 {owner && (
@@ -868,7 +954,8 @@ export default function App() {
                       })
                     }
                   >
-                    Убрать
+                    {" "}
+                    {t("Убрать")}{" "}
                   </Button>
                 )}
               </View>
@@ -878,19 +965,27 @@ export default function App() {
                 <Heading>{money(room.budget.total_minor)}</Heading>
                 {budgetStale && (
                   <Text style={s.banner}>
-                    Расчёт устарел. Организатору нужно пересчитать доли.
+                    {" "}
+                    {t(
+                      "Расчёт устарел. Организатору нужно пересчитать доли.",
+                    )}{" "}
                   </Text>
                 )}
                 <Copy>
-                  Расчёт версии {room.budget.version}. При изменении плана или
-                  состава нужно пересчитать доли.
+                  {" "}
+                  {t("Расчёт версии")} {room.budget.version}
+                  {t(
+                    ". При изменении плана или состава нужно пересчитать доли.",
+                  )}{" "}
                 </Copy>
                 {Object.entries(room.budget.shares).map(([uid, v]) => (
                   <Copy key={uid}>
                     {room.members.find((m) => m.user_id === uid)
                       ?.display_name ?? "Бывший участник"}
                     : {money(v)}{" "}
-                    {room.budget!.agreed_ids.includes(uid) ? "· согласен" : ""}
+                    {room.budget!.agreed_ids.includes(uid)
+                      ? t("· согласен")
+                      : ""}
                   </Copy>
                 ))}
                 <Button
@@ -903,19 +998,20 @@ export default function App() {
                     })
                   }
                 >
-                  Согласен с расчётом
+                  {" "}
+                  {t("Согласен с расчётом")}{" "}
                 </Button>
               </>
             )}
             {owner && (
               <>
                 <Field
-                  label="Статья расходов"
+                  label={t("Статья расходов")}
                   value={itemTitle}
                   onChange={setItemTitle}
                 />
                 <Field
-                  label="Сумма, ₸"
+                  label={t("Сумма, ₸")}
                   value={amount}
                   onChange={setAmount}
                   keyboardType="decimal-pad"
@@ -964,7 +1060,7 @@ export default function App() {
                     })
                   }
                 >
-                  {editingItem ? "Сохранить статью" : "Добавить статью"}
+                  {editingItem ? t("Сохранить статью") : t("Добавить статью")}
                 </Button>
                 <Button
                   secondary
@@ -976,14 +1072,16 @@ export default function App() {
                     })
                   }
                 >
-                  Пересчитать доли
+                  {" "}
+                  {t("Пересчитать доли")}{" "}
                 </Button>
               </>
             )}
           </Card>
         )}
         <Button secondary disabled={busy} onPress={() => void act(refresh)}>
-          Обновить комнату
+          {" "}
+          {t("Обновить комнату")}{" "}
         </Button>
       </>
     );
@@ -991,10 +1089,14 @@ export default function App() {
     content = (
       <>
         {back}
-        <Text style={s.h1}>Добавить в календарь</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {t("Добавить в календарь")}
+        </Text>
         <Copy>
-          Разовый экспорт .ics. Название и место встречи передаются выбранному
-          календарю. Синхронизации нет.
+          {" "}
+          {t(
+            "Разовый экспорт .ics. Название и место встречи передаются выбранному календарю. Синхронизации нет.",
+          )}{" "}
         </Copy>
         <Button
           disabled={busy}
@@ -1020,7 +1122,8 @@ export default function App() {
             })
           }
         >
-          Экспортировать .ics
+          {" "}
+          {t("Экспортировать .ics")}{" "}
         </Button>
       </>
     );
@@ -1029,21 +1132,21 @@ export default function App() {
       login
     ) : (
       <>
-        <Text style={s.eyebrow}>СОБИРАЙТЕ ВПЕЧАТЛЕНИЯ</Text>
-        <Text style={s.h1}>
-          {section === "calendar" ? "Календарь" : "Ваши планы"}
+        <Text style={s.eyebrow}>{t("СОБИРАЙТЕ ВПЕЧАТЛЕНИЯ")}</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {section === "calendar" ? t("Календарь") : t("Ваши планы")}
         </Text>
-        <Button onPress={() => go("/explore")}>+ Новый план</Button>
+        <Button onPress={() => go("/explore")}>{t("+ Новый план")}</Button>
         <Button
           secondary
           onPress={() => go(section === "calendar" ? "/plans" : "/calendar")}
         >
-          {section === "calendar" ? "Все планы" : "Календарь"}
+          {section === "calendar" ? t("Все планы") : t("Календарь")}
         </Button>
         {!plans.length && (
           <Card>
-            <Heading>Первая встреча ещё впереди</Heading>
-            <Copy>Выберите идею в каталоге и соберите компанию.</Copy>
+            <Heading>{t("Первая встреча ещё впереди")}</Heading>
+            <Copy>{t("Выберите идею в каталоге и соберите компанию.")}</Copy>
           </Card>
         )}
         {plans
@@ -1060,7 +1163,7 @@ export default function App() {
                 <Heading>{p.title}</Heading>
                 <Copy>{planDate(p.starts_at)}</Copy>
                 <Copy>{p.meeting_note}</Copy>
-                <Text style={s.price}>Открыть план →</Text>
+                <Text style={s.price}>{t("Открыть план →")}</Text>
               </Card>
             </Pressable>
           ))}
@@ -1071,23 +1174,30 @@ export default function App() {
       login
     ) : (
       <>
-        <Text style={s.h1}>Ваш профиль</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {t("Ваш профиль")}
+        </Text>
         {productFeatures.providers && (
           <>
-            <Button onPress={() => go("/partner")}>Предложить услуги</Button>
+            <Button onPress={() => go("/partner")}>
+              {t("Предложить услуги")}
+            </Button>
             <Button secondary onPress={() => go("/requests")}>
-              Мои заявки
+              {" "}
+              {t("Мои заявки")}{" "}
             </Button>
           </>
         )}
         {isGuest && (
           <Copy>
-            Вы вошли по имени. После выхода или очистки приложения доступ к
-            этому профилю будет потерян.
+            {" "}
+            {t(
+              "Вы вошли по имени. После выхода или очистки приложения доступ к этому профилю будет потерян.",
+            )}{" "}
           </Copy>
         )}
         <Card>
-          <Field label="Как вас зовут" value={name} onChange={setName} />
+          <Field label={t("Как вас зовут")} value={name} onChange={setName} />
           <Button
             disabled={busy}
             onPress={() =>
@@ -1097,10 +1207,12 @@ export default function App() {
               })
             }
           >
-            Сохранить имя
+            {" "}
+            {t("Сохранить имя")}{" "}
           </Button>
           <Button secondary onPress={() => go("/saved")}>
-            Сохранённые идеи
+            {" "}
+            {t("Сохранённые идеи")}{" "}
           </Button>
           <Button
             secondary
@@ -1114,7 +1226,8 @@ export default function App() {
               go("/submit");
             }}
           >
-            Предложить место
+            {" "}
+            {t("Предложить место")}{" "}
           </Button>
           <Button
             secondary
@@ -1124,7 +1237,8 @@ export default function App() {
               )
             }
           >
-            О данных и приватности ↗
+            {" "}
+            {t("О данных и приватности ↗")}{" "}
           </Button>
           <Button
             secondary
@@ -1138,7 +1252,8 @@ export default function App() {
               })
             }
           >
-            Выйти
+            {" "}
+            {t("Выйти")}{" "}
           </Button>
           <Button
             secondary
@@ -1152,10 +1267,11 @@ export default function App() {
               })
             }
           >
-            Запросить удаление аккаунта
+            {" "}
+            {t("Запросить удаление аккаунта")}{" "}
           </Button>
         </Card>
-        <Heading>Обновления планов</Heading>
+        <Heading>{t("Обновления планов")}</Heading>
         {notifications.length ? (
           notifications.map((n) => (
             <Card key={n.id}>
@@ -1164,9 +1280,9 @@ export default function App() {
             </Card>
           ))
         ) : (
-          <Copy>Обновлений пока нет.</Copy>
+          <Copy>{t("Обновлений пока нет.")}</Copy>
         )}
-        <Heading>Мои предложения</Heading>
+        <Heading>{t("Мои предложения")}</Heading>
         {submissions.map((x) => (
           <Card key={x.id}>
             <Heading>{x.title}</Heading>
@@ -1209,7 +1325,8 @@ export default function App() {
                   go("/submit");
                 }}
               >
-                Редактировать
+                {" "}
+                {t("Редактировать")}{" "}
               </Button>
             )}
           </Card>
@@ -1222,13 +1339,17 @@ export default function App() {
     ) : (
       <>
         {back}
-        <Text style={s.h1}>Поделиться открытием</Text>
+        <Text accessibilityRole="header" style={s.h1}>
+          {t("Поделиться открытием")}
+        </Text>
         <Copy>
-          Предлагайте публичные места. Перед отправкой убедитесь, что вправе
-          публиковать описание. Редактор проверит сведения.
+          {" "}
+          {t(
+            "Предлагайте публичные места. Перед отправкой убедитесь, что вправе публиковать описание. Редактор проверит сведения.",
+          )}{" "}
         </Copy>
         <Card>
-          <Field label="Название" value={title} onChange={setTitle} />
+          <Field label={t("Название")} value={title} onChange={setTitle} />
           <View style={s.chips}>
             {[
               ["place", "Место"],
@@ -1245,7 +1366,7 @@ export default function App() {
             ))}
           </View>
           <Field
-            label="Дата события · ГГГГ-ММ-ДДTЧЧ:ММ (UTC+5)"
+            label={t("Дата события · ГГГГ-ММ-ДДTЧЧ:ММ (UTC+5)")}
             value={starts}
             onChange={setStarts}
           />
@@ -1256,7 +1377,7 @@ export default function App() {
                 secondary={city !== c.slug}
                 onPress={() => setCity(c.slug)}
               >
-                {c.name}
+                {t(c.name)}
               </Button>
             ))}
           </View>
@@ -1264,18 +1385,23 @@ export default function App() {
             <View style={s.chips}>
               {categories.slice(1).map((c) => (
                 <Button
-                  key={c}
+                  key={t(c)}
                   secondary={category !== c}
                   onPress={() => setCategory(c)}
                 >
-                  {c}
+                  {t(c)}
                 </Button>
               ))}
             </View>
           </ScrollView>
-          <Field label="Описание" value={body} onChange={setBody} multiline />
           <Field
-            label="Публичный адрес"
+            label={t("Описание")}
+            value={body}
+            onChange={setBody}
+            multiline
+          />
+          <Field
+            label={t("Публичный адрес")}
             value={meeting}
             onChange={setMeeting}
           />
@@ -1302,7 +1428,8 @@ export default function App() {
               })
             }
           >
-            Подтверждаю право публикации — отправить
+            {" "}
+            {t("Подтверждаю право публикации — отправить")}{" "}
           </Button>
           <Button
             secondary
@@ -1324,7 +1451,8 @@ export default function App() {
               })
             }
           >
-            Сохранить черновик
+            {" "}
+            {t("Сохранить черновик")}{" "}
           </Button>
         </Card>
       </>
@@ -1338,12 +1466,14 @@ export default function App() {
               <View style={s.heroInner}>
                 <Text style={s.heroMark}>⛰</Text>
                 <Text style={s.heroTitle}>Qayda</Text>
-                <Text style={s.heroTagline}>Открываем Казахстан вместе</Text>
+                <Text style={s.heroTagline}>
+                  {t("Открываем Казахстан вместе")}
+                </Text>
                 <TextInput
-                  accessibilityLabel="Поиск мест"
+                  accessibilityLabel={t("Поиск мест")}
                   value={query}
                   onChangeText={setQuery}
-                  placeholder="Куда вы хотите поехать?"
+                  placeholder={t("Куда вы хотите поехать?")}
                   placeholderTextColor={color.muted}
                   style={s.input}
                 />
@@ -1383,7 +1513,7 @@ export default function App() {
                       >
                         <Text style={{ fontSize: 24 }}>{icon}</Text>
                       </View>
-                      <Text style={s.quickLabel}>{name}</Text>
+                      <Text style={s.quickLabel}>{t(name)}</Text>
                     </Pressable>
                   ))}
                 </View>
@@ -1395,28 +1525,34 @@ export default function App() {
                   onPress={() => go("/photos")}
                   style={s.landscapeCaption}
                 >
-                  <Text style={s.quickLabel}>Большое Алматинское озеро ↗</Text>
+                  <Text style={s.quickLabel}>
+                    {t("Большое Алматинское озеро ↗")}
+                  </Text>
                 </Pressable>
               </View>
             </View>
             {productFeatures.providers && (
               <Card>
-                <Heading>Кто поможет с поездкой?</Heading>
+                <Heading>{t("Кто поможет с поездкой?")}</Heading>
                 <Copy>
-                  Гид, машина с водителем или готовый тур — одному и с друзьями.
+                  {" "}
+                  {t(
+                    "Гид, машина с водителем или готовый тур — одному и с друзьями.",
+                  )}{" "}
                 </Copy>
                 <Button onPress={() => go("/providers")}>
-                  Найти исполнителя
+                  {" "}
+                  {t("Найти исполнителя")}{" "}
                 </Button>
               </Card>
             )}
-            <Heading>Выберите свой город</Heading>
+            <Heading>{t("Выберите свой город")}</Heading>
             <View style={s.cityGrid}>
               {cities.map((c) => (
                 <Pressable
                   accessibilityRole="button"
                   key={c.slug}
-                  accessibilityLabel={`Открыть ${c.name}`}
+                  accessibilityLabel={`Открыть ${t(c.name)}`}
                   onPress={() => {
                     setCity(c.slug);
                     setCategory("Все");
@@ -1427,11 +1563,11 @@ export default function App() {
                 >
                   <Art photoKey={c.slug} height={140} />
                   <View style={s.cityCaption}>
-                    <Text style={s.cityTitle}>{c.name}</Text>
+                    <Text style={s.cityTitle}>{t(c.name)}</Text>
                     <Text style={s.label}>
                       {c.slug === "semey"
-                        ? "История · Культура"
-                        : "Горы · Искусство"}
+                        ? t("История · Культура")
+                        : t("Горы · Искусство")}
                     </Text>
                   </View>
                 </Pressable>
@@ -1439,12 +1575,49 @@ export default function App() {
             </View>
           </>
         )}
-        <Text style={s.h1}>
+        <Card>
+          <Heading>{t("Культура региона в цифрах")}</Heading>
+          <Copy>{t(culture.name)}</Copy>
+          <Copy>
+            {culture.museums} {t("музеев")} · {culture.theatres} {t("театров")}
+          </Copy>
+          <Copy>
+            {t("Данные БНС на 1 января 2026 года")}.{" "}
+            {t("Это все учреждения региона, не число предложений в Qayda.")}
+          </Copy>
+          <View style={s.chips}>
+            <Button
+              secondary
+              onPress={() => {
+                setCategory("Музеи");
+                go("/explore");
+              }}
+            >
+              {t("Посмотреть музеи")}
+            </Button>
+            <Button
+              secondary
+              onPress={() => {
+                setCategory("Театры");
+                go("/explore");
+              }}
+            >
+              {t("Посмотреть театры")}
+            </Button>
+          </View>
+          <Button
+            secondary
+            onPress={() => void Linking.openURL(cultureData.source_url)}
+          >
+            {t("Источник и таблица")} ↗
+          </Button>
+        </Card>
+        <Text accessibilityRole="header" style={s.h1}>
           {section === "saved"
-            ? "Сохранённое"
+            ? t("Сохранённое")
             : section === "explore"
-              ? "Каталог впечатлений"
-              : "Ваш следующий выходной"}
+              ? t("Каталог впечатлений")
+              : t("Ваш следующий выходной")}
         </Text>
         <View style={s.chips}>
           {cities.map((c) => (
@@ -1453,27 +1626,27 @@ export default function App() {
               secondary={city !== c.slug}
               onPress={() => setCity(c.slug)}
             >
-              {c.name}
+              {t(c.name)}
             </Button>
           ))}
         </View>
         {section !== "home" && (
           <Field
-            label="Поиск мест"
+            label={t("Поиск мест")}
             value={query}
             onChange={setQuery}
-            placeholder="Место или впечатление"
+            placeholder={t("Место или впечатление")}
           />
         )}
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={s.chips}>
             {categories.map((c) => (
               <Button
-                key={c}
+                key={t(c)}
                 secondary={category !== c}
                 onPress={() => setCategory(c)}
               >
-                {c}
+                {t(c)}
               </Button>
             ))}
           </View>
@@ -1485,17 +1658,31 @@ export default function App() {
         )}
         {!loading && !visible.length && (
           <Card>
-            <Heading>Пока нет подходящих идей</Heading>
-            <Copy>Выберите другой город или категорию.</Copy>
+            <Heading>{t("Пока нет подходящих идей")}</Heading>
+            <Copy>{t("Выберите другой город или категорию.")}</Copy>
+            <Button
+              secondary
+              onPress={() => {
+                setQuery("");
+                setCategory("Все");
+              }}
+            >
+              {t("Сбросить фильтры")}
+            </Button>
             <Button secondary onPress={() => void catalog()}>
-              Обновить каталог
+              {" "}
+              {t("Обновить каталог")}{" "}
             </Button>
           </Card>
         )}
       </>
     );
   return (
-    <SafeAreaView style={s.root} edges={["top", "bottom"]}>
+    <SafeAreaView
+      style={s.root}
+      edges={["top", "bottom"]}
+      accessibilityLanguage={locale === "kk" ? "kk-KZ" : "ru-RU"}
+    >
       <View style={s.top}>
         <Pressable accessibilityRole="button" onPress={() => go("/")}>
           <Text style={s.logo}>△ Qayda</Text>
@@ -1505,7 +1692,45 @@ export default function App() {
           onPress={() => go("/profile")}
           style={s.profile}
         >
-          <Text style={s.label}>{user ? "Профиль" : "Войти"} →</Text>
+          <Text style={s.label}>{user ? t("Профиль") : t("Войти")} →</Text>
+        </Pressable>
+      </View>
+      <View
+        style={{
+          flexDirection: "row",
+          flexWrap: "wrap",
+          gap: 8,
+          paddingHorizontal: 20,
+          paddingVertical: 6,
+        }}
+      >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: locale === "kk" }}
+          accessibilityLabel="Қазақша"
+          onPress={() => setLocale("kk")}
+          style={[s.preferenceButton, locale === "kk" && s.preferenceSelected]}
+        >
+          <Text style={s.preferenceText}>Қазақша</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: locale === "ru" }}
+          accessibilityLabel="Русский"
+          onPress={() => setLocale("ru")}
+          style={[s.preferenceButton, locale === "ru" && s.preferenceSelected]}
+        >
+          <Text style={s.preferenceText}>Русский</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ selected: large }}
+          onPress={() => setLarge(!large)}
+          style={s.preferenceButton}
+        >
+          <Text style={s.preferenceText}>
+            {t(large ? "Обычный текст" : "Крупный текст")}
+          </Text>
         </Pressable>
       </View>
       <ScrollView
@@ -1513,18 +1738,21 @@ export default function App() {
         contentContainerStyle={s.content}
         keyboardShouldPersistTaps="handled"
       >
-        {!db && <Text style={s.demo}>ДЕМОПРОСМОТР · Backend не подключён</Text>}
+        {!db && (
+          <Text style={s.demo}>{t("ДЕМОПРОСМОТР · Backend не подключён")}</Text>
+        )}
         {error && (
           <View accessibilityRole="alert" style={s.error}>
-            <Text style={{ color: color.error }}>{error}</Text>
+            <Text style={{ color: color.error }}>{t(error)}</Text>
             <Button secondary onPress={() => setError("")}>
-              Закрыть
+              {" "}
+              {t("Закрыть")}{" "}
             </Button>
           </View>
         )}
         {notice && (
           <Text accessibilityLiveRegion="polite" style={s.banner}>
-            {notice}
+            {t(notice)}
           </Text>
         )}
         {busy && <ActivityIndicator color={color.forest} />}
@@ -1543,7 +1771,7 @@ export default function App() {
               (p !== "/providers" || productFeatures.providers) &&
               (p !== "/plans" || productFeatures.tripPlanning),
           )
-          .map(([p, icon, t]) => (
+          .map(([p, icon, label]) => (
             <Pressable
               accessibilityRole="tab"
               accessibilityState={{ selected: path === p }}
@@ -1552,7 +1780,9 @@ export default function App() {
               style={s.navItem}
             >
               <Text style={[s.navIcon, path === p && s.active]}>{icon}</Text>
-              <Text style={[s.navLabel, path === p && s.active]}>{t}</Text>
+              <Text style={[s.navLabel, path === p && s.active]}>
+                {t(label)}
+              </Text>
             </Pressable>
           ))}
       </View>

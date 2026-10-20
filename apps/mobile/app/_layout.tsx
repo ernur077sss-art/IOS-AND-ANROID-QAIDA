@@ -1,3 +1,4 @@
+import { PreferencesProvider } from "../src/Preferences";
 import { Stack } from "expo-router";
 import { NativeProvider } from "../src/App";
 import { StatusBar } from "expo-status-bar";
@@ -6,9 +7,11 @@ export default function Layout() {
   return (
     <SafeAreaProvider>
       <StatusBar style="dark" />
-      <NativeProvider>
-        <Stack screenOptions={{ headerShown: false }} />
-      </NativeProvider>
+      <PreferencesProvider>
+        <NativeProvider>
+          <Stack screenOptions={{ headerShown: false }} />
+        </NativeProvider>
+      </PreferencesProvider>
     </SafeAreaProvider>
   );
 }

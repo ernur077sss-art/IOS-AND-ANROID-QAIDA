@@ -1,4 +1,7 @@
 "use client";
+import { DisplayControls, usePreferences } from "./Preferences";
+import { OpenCulture } from "./OpenCulture";
+import { localizeListing } from "@qayda/domain";
 import { Field, Photo, PhotoCredit, Empty } from "./ui";
 import { BudgetItemEditor } from "./BudgetItemEditor";
 import { ProvidersHub } from "./ProvidersHub";
@@ -62,6 +65,7 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 const db: Client | null = url && key ? client(url, key) : null;
 type Room = Awaited<ReturnType<typeof api.room>>;
 export function Shell() {
+  const { t, locale } = usePreferences();
   const path = usePathname();
   const router = useRouter();
   const [guestName, setGuestName] = useState("");
@@ -99,7 +103,10 @@ export function Shell() {
   const [olderDone, setOlderDone] = useState(false);
   const parts = path.split("/").filter(Boolean);
   const section = parts[0] ?? "home";
-  const selected = listings.find((x) => x.id === parts[1]);
+  const selectedRecord = listings.find((x) => x.id === parts[1]);
+  const selected = selectedRecord
+    ? localizeListing(selectedRecord, locale)
+    : undefined;
   const planId = section === "plans" ? parts[1] : undefined;
   const act = useCallback(async (fn: () => Promise<void>) => {
     setBusy(true);
@@ -123,6 +130,15 @@ export function Shell() {
     } finally {
       setLoading(false);
     }
+  }, []);
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const preferredCity = params.get("city");
+    const preferredCategory = params.get("category");
+    if (preferredCity === "semey" || preferredCity === "almaty")
+      setCity(preferredCity);
+    if (preferredCategory && categories.includes(preferredCategory))
+      setCategory(preferredCategory);
   }, []);
   const previousUser = useRef<string | null>(null);
   useEffect(() => {
@@ -304,51 +320,59 @@ export function Shell() {
         JSON.stringify(going));
   const back = (
     <button className="back" onClick={() => router.back()}>
-      <ArrowLeft size={18} />
-      Назад
+      <ArrowLeft size={18} /> {t("Назад")}{" "}
     </button>
   );
-  const catalogCard = (l: Listing) => (
-    <article className="listing" key={l.id}>
-      <a href={`/listing/${l.id}`}>
-        <Photo category={l.category} listingId={l.id} />
-        <div className="listing-body">
-          <div className="eyebrow">
-            {l.category} <span>↗</span>
+  const catalogCard = (record: Listing) => {
+    const l = localizeListing(record, locale);
+    return (
+      <article className="listing" key={l.id}>
+        <a href={`/listing/${l.id}`}>
+          <Photo category={t(l.category)} listingId={l.id} />
+          <div className="listing-body">
+            <div className="eyebrow">
+              {t(l.category)} <span>↗</span>
+            </div>
+            <h3>{l.title}</h3>
+            <p>{l.summary}</p>
+            <div className="card-foot">
+              <span>
+                {l.price_minor !== null
+                  ? money(l.price_minor)
+                  : t("Стоимость уточняется")}
+              </span>
+              <small>
+                {l.origin === "demo_fixture" ? t("Демоидея") : t("Подробнее")}
+              </small>
+            </div>
           </div>
-          <h3>{l.title}</h3>
-          <p>{l.summary}</p>
-          <div className="card-foot">
-            <span>
-              {l.price_minor !== null
-                ? money(l.price_minor)
-                : "Стоимость уточняется"}
-            </span>
-            <small>
-              {l.origin === "demo_fixture" ? "Демоидея" : "Подробнее"}
-            </small>
-          </div>
-        </div>
-      </a>
-    </article>
-  );
+        </a>
+      </article>
+    );
+  };
   const auth = (
     <div className="auth card">
       <span className="eyebrow">
         {productFeatures.tripPlanning
-          ? "СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ"
-          : "ВАШИ ЛЮБИМЫЕ МЕСТА"}
+          ? t("СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ")
+          : t("ВАШИ ЛЮБИМЫЕ МЕСТА")}
       </span>
-      <h1>Вход в Qayda</h1>
+      <h1>{t("Вход в Qayda")}</h1>
       <p>
         {productFeatures.tripPlanning
-          ? "Каталог открыт всем. Войдите, чтобы создавать планы и отвечать друзьям."
-          : "Каталог открыт всем. Войдите, чтобы сохранять понравившиеся места."}
+          ? t(
+              "Каталог открыт всем. Войдите, чтобы создавать планы и отвечать друзьям.",
+            )
+          : t(
+              "Каталог открыт всем. Войдите, чтобы сохранять понравившиеся места.",
+            )}
       </p>
       {!db ? (
-        <Empty title="Подключение готовится">
-          Для входа необходимо настроить Supabase. Просмотр демонстрационных
-          идей уже доступен.
+        <Empty title={t("Подключение готовится")}>
+          {" "}
+          {t(
+            "Для входа необходимо настроить Supabase. Просмотр демонстрационных идей уже доступен.",
+          )}{" "}
         </Empty>
       ) : (
         <>
@@ -376,7 +400,8 @@ export function Shell() {
             })}
           >
             <label className="field">
-              Ваше имя
+              {" "}
+              {t("Ваше имя")}{" "}
               <input
                 name="guest_name"
                 disabled={!ready}
@@ -388,13 +413,17 @@ export function Shell() {
               />
             </label>
             <p className="muted">
-              Вход по имени сохраняется в этом браузере. После выхода или
-              очистки данных восстановить его нельзя.
+              {" "}
+              {t(
+                "Вход по имени сохраняется в этом браузере. После выхода или очистки данных восстановить его нельзя.",
+              )}{" "}
             </p>
-            <button disabled={!ready || busy}>Продолжить по имени</button>
+            <button disabled={!ready || busy}>
+              {t("Продолжить по имени")}
+            </button>
           </form>
           <details>
-            <summary>Войти по email</summary>
+            <summary>{t("Войти по email")}</summary>
             <form
               onSubmit={form(async (data) => {
                 if (!otpSent) {
@@ -447,7 +476,8 @@ export function Shell() {
                 </label>
               ) : (
                 <label className="field">
-                  Код из письма
+                  {" "}
+                  {t("Код из письма")}{" "}
                   <input
                     name="code"
                     autoComplete="one-time-code"
@@ -460,10 +490,10 @@ export function Shell() {
               )}
               <button disabled={busy}>
                 {busy
-                  ? "Подождите…"
+                  ? t("Подождите…")
                   : otpSent
-                    ? "Войти"
-                    : "Получить письмо для входа"}
+                    ? t("Войти")
+                    : t("Получить письмо для входа")}
               </button>
               {otpSent && (
                 <button
@@ -471,7 +501,8 @@ export function Shell() {
                   className="secondary"
                   onClick={() => setOtpSent(false)}
                 >
-                  Другой email
+                  {" "}
+                  {t("Другой email")}{" "}
                 </button>
               )}
             </form>
@@ -493,13 +524,16 @@ export function Shell() {
   if (section === "auth")
     content = (
       <div className="narrow card">
-        <h1>Завершаем вход</h1>
+        <h1>{t("Завершаем вход")}</h1>
         <p>
-          После входа можно вернуться во вкладку приглашения и вступить в
-          компанию.
+          {" "}
+          {t(
+            "После входа можно вернуться во вкладку приглашения и вступить в компанию.",
+          )}{" "}
         </p>
         <a className="button secondary" href="/login">
-          Запросить новую ссылку
+          {" "}
+          {t("Запросить новую ссылку")}{" "}
         </a>
       </div>
     );
@@ -524,19 +558,26 @@ export function Shell() {
       <div className="narrow">
         {back}
         <div className="card">
-          <span className="eyebrow">ВАС ПРИГЛАШАЮТ</span>
+          <span className="eyebrow">{t("ВАС ПРИГЛАШАЮТ")}</span>
           <h1>{preview?.title ?? "Совместный план"}</h1>
           <p>
-            Присоединитесь к компании, чтобы увидеть детали и ответить друзьям.
-            RSVP не бронирует билеты.
+            {" "}
+            {t(
+              "Присоединитесь к компании, чтобы увидеть детали и ответить друзьям. RSVP не бронирует билеты.",
+            )}{" "}
           </p>
           {!token ? (
             <p>
-              Откройте полную ссылку приглашения, которую прислал организатор.
+              {" "}
+              {t(
+                "Откройте полную ссылку приглашения, которую прислал организатор.",
+              )}{" "}
             </p>
           ) : preview ? (
             <>
-              <p>Ссылка действует до {planDate(preview.expires_at)}</p>
+              <p>
+                {t("Ссылка действует до")} {planDate(preview.expires_at)}
+              </p>
               {user ? (
                 <button
                   disabled={busy}
@@ -548,14 +589,15 @@ export function Shell() {
                     })
                   }
                 >
-                  Вступить в компанию
+                  {" "}
+                  {t("Вступить в компанию")}{" "}
                 </button>
               ) : (
                 auth
               )}
             </>
           ) : (
-            <p>Проверяем приглашение…</p>
+            <p>{t("Проверяем приглашение…")}</p>
           )}
         </div>
       </div>
@@ -565,7 +607,7 @@ export function Shell() {
       <div className="narrow">
         {back}
         <Photo
-          category={selected.category}
+          category={t(selected.category)}
           listingId={selected.id}
           large
           eager
@@ -573,29 +615,36 @@ export function Shell() {
         <PhotoCredit listingId={selected.id} />
         <div className="detail">
           <span className="eyebrow">
-            {selected.category} ·{" "}
-            {cities.find((c) => c.slug === selected.city)?.name}
+            {t(selected.category)} ·{" "}
+            {t(cities.find((c) => c.slug === selected.city)?.name ?? "")}
           </span>
           <h1>{selected.title}</h1>
           {selected.origin === "demo_fixture" && (
             <p className="banner">
-              Демонстрационная идея. Место, условия и маршрут ещё не проверены.
+              {" "}
+              {t(
+                "Демонстрационная идея. Место, условия и маршрут ещё не проверены.",
+              )}{" "}
             </p>
           )}
           <p className="lead">{selected.summary}</p>
           {productFeatures.providers && (
             <a className="button" href={`/providers?place=${selected.id}`}>
-              Найти гида, водителя или турфирму
+              {" "}
+              {t("Найти гида, водителя или турфирму")}{" "}
             </a>
           )}
           {selected.out_of_city && (
             <p className="banner">
-              За городом · направление из{" "}
-              {selected.city === "semey" ? "Семея" : "Алматы"}
+              {" "}
+              {t("За городом · направление из")}{" "}
+              {selected.city === "semey" ? t("Семея") : t("Алматы")}
             </p>
           )}
           {selected.kind === "event" && selected.event_starts && (
-            <p>Дата события: {planDate(selected.event_starts)}</p>
+            <p>
+              {t("Дата события:")} {planDate(selected.event_starts)}
+            </p>
           )}
           <div className="fact">
             <MapPin size={20} />
@@ -605,7 +654,7 @@ export function Shell() {
             <Leaf size={20} />
             {selected.price_minor !== null
               ? money(selected.price_minor)
-              : "Стоимость уточнить у организатора"}
+              : t("Стоимость уточнить у организатора")}
           </div>
           {safeUrl(selected.source_url) && (
             <a
@@ -613,18 +662,21 @@ export function Shell() {
               target="_blank"
               rel="noreferrer"
             >
-              Источник сведений <ArrowUpRight size={16} />
+              {" "}
+              {t("Источник сведений")} <ArrowUpRight size={16} />
             </a>
           )}
           <p className="muted">
             {selected.checked_at
-              ? `Проверено ${planDate(selected.checked_at)}`
-              : "Дата проверки пока не указана"}
+              ? `${t("Проверено")} ${new Intl.DateTimeFormat(locale === "kk" ? "kk-KZ" : "ru-RU", { dateStyle: "medium", timeZone: "Asia/Almaty" }).format(new Date(selected.checked_at))}`
+              : t("Дата проверки пока не указана")}
           </p>
           {selected.verified_fields?.length ? (
             <p className="muted">
-              Проверены название, описание и указанные данные места. Расписание
-              и стоимость уточняются отдельно.
+              {" "}
+              {t(
+                "Проверены название, описание и указанные данные места. Расписание и стоимость уточняются отдельно.",
+              )}{" "}
             </p>
           ) : null}
           {mapUrl(selected) && (
@@ -634,7 +686,8 @@ export function Shell() {
               target="_blank"
               rel="noreferrer"
             >
-              Открыть карту
+              {" "}
+              {t("Открыть карту")}{" "}
             </a>
           )}
           {productFeatures.tripPlanning && (
@@ -644,7 +697,8 @@ export function Shell() {
                 if (needAuth()) router.push(`/create/${selected.id}`);
               }}
             >
-              Собрать компанию <Users size={18} />
+              {" "}
+              {t("Собрать компанию")} <Users size={18} />
             </button>
           )}
           <button
@@ -664,8 +718,8 @@ export function Shell() {
           >
             <Heart size={18} />
             {saved.includes(selected.id)
-              ? "Убрать из сохранённого"
-              : "Сохранить"}
+              ? t("Убрать из сохранённого")
+              : t("Сохранить")}
           </button>
           {user && (
             <form
@@ -674,9 +728,10 @@ export function Shell() {
                 setNotice("Жалоба передана на проверку");
               })}
             >
-              <Field name="reason" label="Сообщить об ошибке" />
+              <Field name="reason" label={t("Сообщить об ошибке")} />
               <button className="text-button" disabled={busy}>
-                Отправить на проверку
+                {" "}
+                {t("Отправить на проверку")}{" "}
               </button>
             </form>
           )}
@@ -690,12 +745,12 @@ export function Shell() {
     ) : (
       <div className="narrow">
         {back}
-        <h1>Собрать компанию</h1>
+        <h1>{t("Собрать компанию")}</h1>
         {l && (
           <div className="selected-place">
             <Photo listingId={l.id} />
             <div>
-              <span className="eyebrow">ВАШЕ МЕСТО</span>
+              <span className="eyebrow">{t("ВАШЕ МЕСТО")}</span>
               <h3>{l.title}</h3>
               <p className="muted">
                 {cities.find((c) => c.slug === l.city)?.name}
@@ -720,11 +775,16 @@ export function Shell() {
             router.push(`/plans/${id}`);
           })}
         >
-          <Field name="title" label="Название плана" defaultValue={l?.title} />
+          <Field
+            name="title"
+            label={t("Название плана")}
+            defaultValue={l?.title}
+          />
           <label className="field">
-            Компания
+            {" "}
+            {t("Компания")}{" "}
             <select name="group">
-              <option value="">Создать новую компанию</option>
+              <option value="">{t("Создать новую компанию")}</option>
               {plans
                 .filter(
                   (p, i, a) =>
@@ -740,9 +800,11 @@ export function Shell() {
           </label>
           <Field
             name="starts"
-            label="Дата и время · Алматы (UTC+5)"
+            label={t("Дата и время · Алматы (UTC+5)")}
             type="datetime-local"
-            hint="Выберите будущую дату. Встречу можно запланировать на ближайшие два года."
+            hint={t(
+              "Выберите будущую дату. Встречу можно запланировать на ближайшие два года.",
+            )}
             error={
               /дата встречи|дату встречи|дату и время встречи/i.test(error)
                 ? error
@@ -751,15 +813,17 @@ export function Shell() {
           />
           <Field
             name="meeting"
-            label="Где встречаемся"
-            placeholder="Например, у главного входа"
+            label={t("Где встречаемся")}
+            placeholder={t("Например, у главного входа")}
           />
           <p className="muted">
-            Создадим приватную компанию. Приглашение можно выпустить после
-            публикации плана.
+            {" "}
+            {t(
+              "Создадим приватную компанию. Приглашение можно выпустить после публикации плана.",
+            )}{" "}
           </p>
           <button disabled={busy || !l}>
-            {busy ? "Создаём…" : "Создать план"}
+            {busy ? t("Создаём…") : t("Создать план")}
           </button>
         </form>
       </div>
@@ -768,15 +832,16 @@ export function Shell() {
     content = !user ? (
       auth
     ) : !room ? (
-      <Empty title={error ? "План недоступен" : "Загружаем план"}>
-        Доступ есть только у участников компании.
+      <Empty title={error ? t("План недоступен") : t("Загружаем план")}>
+        {" "}
+        {t("Доступ есть только у участников компании.")}{" "}
       </Empty>
     ) : (
       <div className="room-layout">
         <div className="room-main">
           {back}
           <span className="eyebrow">
-            {statusLabels[room.plan.status]} · версия {room.plan.version}
+            {statusLabels[room.plan.status]} {t("· версия")} {room.plan.version}
           </span>
           {room.plan.listing_id && (
             <div className="room-cover">
@@ -802,14 +867,17 @@ export function Shell() {
           </div>
           {tab === "План" && (
             <div className="card">
-              <h2>Вы с нами?</h2>
+              <h2>{t("Вы с нами?")}</h2>
               <p className="muted">
-                Ответ означает намерение пойти. Билеты и услуги оформляются
-                отдельно.
+                {" "}
+                {t(
+                  "Ответ означает намерение пойти. Билеты и услуги оформляются отдельно.",
+                )}{" "}
               </p>
               {rsvp && rsvp.acknowledged_version !== room.plan.version && (
                 <p className="banner">
-                  План изменился — подтвердите ответ заново.
+                  {" "}
+                  {t("План изменился — подтвердите ответ заново.")}{" "}
                 </p>
               )}
               <div className="row wrap">
@@ -844,7 +912,7 @@ export function Shell() {
               {owner && (
                 <>
                   <hr />
-                  <h3>Управление планом</h3>
+                  <h3>{t("Управление планом")}</h3>
                   <div className="row wrap">
                     {(room.plan.status === "draft"
                       ? ["publish", "cancel"]
@@ -878,7 +946,7 @@ export function Shell() {
                   </div>
                   {!["cancelled", "completed"].includes(room.plan.status) && (
                     <details>
-                      <summary>Изменить договорённости</summary>
+                      <summary>{t("Изменить договорённости")}</summary>
                       <form
                         onSubmit={form(async (data) => {
                           await api.action(
@@ -899,13 +967,13 @@ export function Shell() {
                       >
                         <Field
                           name="title"
-                          label="Название"
+                          label={t("Название")}
                           defaultValue={room.plan.title}
                         />
                         <Field
                           name="starts"
                           type="datetime-local"
-                          label="Дата и время · UTC+5"
+                          label={t("Дата и время · UTC+5")}
                           defaultValue={new Date(
                             new Date(room.plan.starts_at).getTime() +
                               5 * 3600000,
@@ -915,14 +983,18 @@ export function Shell() {
                         />
                         <Field
                           name="meeting"
-                          label="Встреча"
+                          label={t("Встреча")}
                           defaultValue={room.plan.meeting_note}
                         />
                         <p>
-                          Изменение создаст новую версию. Участникам потребуется
-                          подтвердить ответы.
+                          {" "}
+                          {t(
+                            "Изменение создаст новую версию. Участникам потребуется подтвердить ответы.",
+                          )}{" "}
                         </p>
-                        <button disabled={busy}>Сохранить новую версию</button>
+                        <button disabled={busy}>
+                          {t("Сохранить новую версию")}
+                        </button>
                       </form>
                     </details>
                   )}
@@ -943,17 +1015,22 @@ export function Shell() {
                   URL.revokeObjectURL(u);
                 }}
               >
-                Скачать событие .ics
+                {" "}
+                {t("Скачать событие .ics")}{" "}
               </button>
               <p className="muted">
-                Разовый экспорт передаст название и место встречи вашему
-                календарю. Автоматического обновления нет.
+                {" "}
+                {t(
+                  "Разовый экспорт передаст название и место встречи вашему календарю. Автоматического обновления нет.",
+                )}{" "}
               </p>
             </div>
           )}
           {tab === "Участники" && (
             <div className="card">
-              <h2>Компания · {room.members.length}</h2>
+              <h2>
+                {t("Компания ·")} {room.members.length}
+              </h2>
               {room.members.map((m) => {
                 const r = room.rsvps.find((x) => x.user_id === m.user_id);
                 return (
@@ -963,12 +1040,12 @@ export function Shell() {
                       <strong>{m.display_name}</strong>
                       <p>
                         {m.user_id === room.plan.owner_id
-                          ? "Организатор"
+                          ? t("Организатор")
                           : r
                             ? r.acknowledged_version === room.plan.version
                               ? answerLabels[r.answer]
-                              : "Нужно подтвердить"
-                            : "Не ответил"}
+                              : t("Нужно подтвердить")
+                            : t("Не ответил")}
                       </p>
                     </div>
                     {owner && m.user_id !== user && (
@@ -983,7 +1060,8 @@ export function Shell() {
                             })
                           }
                         >
-                          Передать владение
+                          {" "}
+                          {t("Передать владение")}{" "}
                         </button>
                         <button
                           className="text-button danger"
@@ -995,7 +1073,8 @@ export function Shell() {
                             })
                           }
                         >
-                          Удалить
+                          {" "}
+                          {t("Удалить")}{" "}
                         </button>
                       </div>
                     )}
@@ -1015,14 +1094,15 @@ export function Shell() {
                     })
                   }
                 >
-                  Выйти из компании
+                  {" "}
+                  {t("Выйти из компании")}{" "}
                 </button>
               )}
             </div>
           )}
           {tab === "Обсуждение" && (
             <div className="card">
-              <h2>Обсуждение</h2>
+              <h2>{t("Обсуждение")}</h2>
               {room.messages.length >= 50 && !olderDone && (
                 <button
                   className="secondary"
@@ -1042,11 +1122,15 @@ export function Shell() {
                     })
                   }
                 >
-                  Загрузить более ранние
+                  {" "}
+                  {t("Загрузить более ранние")}{" "}
                 </button>
               )}
               <p className="muted">
-                Показаны последние 50 сообщений. Обновите, чтобы получить новые.
+                {" "}
+                {t(
+                  "Показаны последние 50 сообщений. Обновите, чтобы получить новые.",
+                )}{" "}
               </p>
               {room.messages.length ? (
                 room.messages.map((m) => (
@@ -1069,13 +1153,14 @@ export function Shell() {
                             })
                           }
                         >
-                          Удалить своё сообщение
+                          {" "}
+                          {t("Удалить своё сообщение")}{" "}
                         </button>
                       )}
                   </div>
                 ))
               ) : (
-                <p>Сообщений пока нет. Обсудите детали поездки.</p>
+                <p>{t("Сообщений пока нет. Обсудите детали поездки.")}</p>
               )}
               <form
                 onSubmit={form(async (data) => {
@@ -1092,22 +1177,24 @@ export function Shell() {
                 })}
               >
                 <label className="field">
-                  Сообщение
+                  {" "}
+                  {t("Сообщение")}{" "}
                   <textarea name="body" required maxLength={2000} />
                 </label>
                 <button disabled={busy}>
-                  <Send size={16} />
-                  Отправить
+                  <Send size={16} /> {t("Отправить")}{" "}
                 </button>
               </form>
             </div>
           )}
           {tab === "Бюджет" && (
             <div className="card">
-              <h2>Расходы компании</h2>
+              <h2>{t("Расходы компании")}</h2>
               <p className="muted">
-                Это предварительный расчёт. Qayda не принимает и не переводит
-                деньги.
+                {" "}
+                {t(
+                  "Это предварительный расчёт. Qayda не принимает и не переводит деньги.",
+                )}{" "}
               </p>
               {room.items.map((i) => (
                 <div className="member" key={i.id}>
@@ -1123,8 +1210,10 @@ export function Shell() {
                       />
                     )}
                     <p>
-                      {i.cost_kind === "shared" ? "На всех" : "На человека"} ·{" "}
-                      {money(i.amount_minor)}
+                      {i.cost_kind === "shared"
+                        ? t("На всех")
+                        : t("На человека")}{" "}
+                      · {money(i.amount_minor)}
                     </p>
                   </div>
                   {owner && (
@@ -1143,7 +1232,8 @@ export function Shell() {
                         })
                       }
                     >
-                      Убрать
+                      {" "}
+                      {t("Убрать")}{" "}
                     </button>
                   )}
                 </div>
@@ -1153,7 +1243,10 @@ export function Shell() {
                   <h3>{money(room.budget.total_minor)}</h3>
                   {budgetStale && (
                     <p className="banner">
-                      Расчёт устарел. Организатору нужно пересчитать доли.
+                      {" "}
+                      {t(
+                        "Расчёт устарел. Организатору нужно пересчитать доли.",
+                      )}{" "}
                     </p>
                   )}
                   {Object.entries(room.budget.shares).map(([id, amount]) => (
@@ -1161,7 +1254,9 @@ export function Shell() {
                       {room.members.find((m) => m.user_id === id)
                         ?.display_name ?? "Бывший участник"}{" "}
                       — {money(amount)}{" "}
-                      {room.budget!.agreed_ids.includes(id) ? "· согласен" : ""}
+                      {room.budget!.agreed_ids.includes(id)
+                        ? t("· согласен")
+                        : ""}
                     </p>
                   ))}
                   <button
@@ -1178,11 +1273,12 @@ export function Shell() {
                       })
                     }
                   >
-                    Согласен с расчётом
+                    {" "}
+                    {t("Согласен с расчётом")}{" "}
                   </button>
                 </>
               ) : (
-                <p>Расчёт ещё не сформирован.</p>
+                <p>{t("Расчёт ещё не сформирован.")}</p>
               )}
               {owner && (
                 <>
@@ -1201,18 +1297,23 @@ export function Shell() {
                   >
                     <Field
                       name="title"
-                      label="Статья расходов"
-                      placeholder="Транспорт"
+                      label={t("Статья расходов")}
+                      placeholder={t("Транспорт")}
                     />
-                    <Field name="amount" label="Сумма, ₸" placeholder="5000" />
+                    <Field
+                      name="amount"
+                      label={t("Сумма, ₸")}
+                      placeholder="5000"
+                    />
                     <label className="field">
-                      Распределение
+                      {" "}
+                      {t("Распределение")}{" "}
                       <select name="kind">
-                        <option value="shared">На всех</option>
-                        <option value="per_person">На человека</option>
+                        <option value="shared">{t("На всех")}</option>
+                        <option value="per_person">{t("На человека")}</option>
                       </select>
                     </label>
-                    <button disabled={busy}>Добавить статью</button>
+                    <button disabled={busy}>{t("Добавить статью")}</button>
                   </form>
                   <button
                     className="secondary"
@@ -1224,7 +1325,8 @@ export function Shell() {
                       })
                     }
                   >
-                    Пересчитать для {going.length} участников
+                    {" "}
+                    {t("Пересчитать для")} {going.length} {t("участников")}{" "}
                   </button>
                 </>
               )}
@@ -1232,23 +1334,28 @@ export function Shell() {
           )}
         </div>
         <aside className="card room-aside">
-          <span className="eyebrow">СВОИ ЛЮДИ РЯДОМ</span>
-          <h3>{going.length} собираются пойти</h3>
-          <p>Договоритесь о деталях и подтвердите план.</p>
+          <span className="eyebrow">{t("СВОИ ЛЮДИ РЯДОМ")}</span>
+          <h3>
+            {going.length} {t("собираются пойти")}
+          </h3>
+          <p>{t("Договоритесь о деталях и подтвердите план.")}</p>
           <button
             className="secondary"
             disabled={busy}
             onClick={() => void act(reloadRoom)}
           >
-            Обновить комнату
+            {" "}
+            {t("Обновить комнату")}{" "}
           </button>
           {owner && (
             <>
               <hr />
-              <h3>Пригласить друзей</h3>
+              <h3>{t("Пригласить друзей")}</h3>
               <p>
-                Получатель ссылки сможет вступить в компанию. До входа увидит
-                только выбранный заголовок.
+                {" "}
+                {t(
+                  "Получатель ссылки сможет вступить в компанию. До входа увидит только выбранный заголовок.",
+                )}{" "}
               </p>
               <form
                 onSubmit={form(async (data) => {
@@ -1267,17 +1374,17 @@ export function Shell() {
               >
                 <Field
                   name="preview"
-                  label="Заголовок приглашения"
+                  label={t("Заголовок приглашения")}
                   defaultValue={room.plan.title}
                 />
                 <Field
                   name="maxUses"
-                  label="Максимум вступлений (1–50)"
+                  label={t("Максимум вступлений (1–50)")}
                   defaultValue="20"
                 />
                 <Field
                   name="hours"
-                  label="Срок действия в часах (1–168)"
+                  label={t("Срок действия в часах (1–168)")}
                   defaultValue="168"
                 />
                 <button
@@ -1286,13 +1393,15 @@ export function Shell() {
                     !["proposed", "confirmed"].includes(room.plan.status)
                   }
                 >
-                  Создать ссылку
+                  {" "}
+                  {t("Создать ссылку")}{" "}
                 </button>
               </form>
               {inviteLink && (
                 <>
                   <label className="field">
-                    Ссылка для друзей
+                    {" "}
+                    {t("Ссылка для друзей")}{" "}
                     <input readOnly value={inviteLink} />
                   </label>
                   <button
@@ -1306,7 +1415,8 @@ export function Shell() {
                       })
                     }
                   >
-                    Скопировать ссылку
+                    {" "}
+                    {t("Скопировать ссылку")}{" "}
                   </button>
                 </>
               )}
@@ -1314,7 +1424,7 @@ export function Shell() {
                 <div className="invite-row" key={i.id}>
                   <small>
                     {i.revoked_at
-                      ? "Отозвана"
+                      ? t("Отозвана")
                       : `${i.uses_count}/${i.max_uses} вступлений · до ${planDate(i.expires_at)}`}
                   </small>
                   {!i.revoked_at && (
@@ -1328,7 +1438,8 @@ export function Shell() {
                         })
                       }
                     >
-                      Отозвать
+                      {" "}
+                      {t("Отозвать")}{" "}
                     </button>
                   )}
                 </div>
@@ -1345,28 +1456,33 @@ export function Shell() {
       <>
         <div className="page-heading">
           <div>
-            <span className="eyebrow">СОБИРАЙТЕ ВПЕЧАТЛЕНИЯ</span>
-            <h1>{section === "calendar" ? "Ваш календарь" : "Ваши планы"}</h1>
+            <span className="eyebrow">{t("СОБИРАЙТЕ ВПЕЧАТЛЕНИЯ")}</span>
+            <h1>
+              {section === "calendar" ? t("Ваш календарь") : t("Ваши планы")}
+            </h1>
             <a className="link" href="/requests">
-              Заявки исполнителям →
+              {" "}
+              {t("Заявки исполнителям →")}{" "}
             </a>
           </div>
           <a className="button" href="/explore">
-            <Plus size={18} />
-            Новый план
+            <Plus size={18} /> {t("Новый план")}{" "}
           </a>
         </div>
         <div className="row">
           <a className="button secondary" href="/plans">
-            Все планы
+            {" "}
+            {t("Все планы")}{" "}
           </a>
           <a className="button secondary" href="/calendar">
-            Календарь
+            {" "}
+            {t("Календарь")}{" "}
           </a>
         </div>
         {!plans.length ? (
-          <Empty title="Первая встреча ещё впереди">
-            Выберите идею в каталоге и соберите компанию.
+          <Empty title={t("Первая встреча ещё впереди")}>
+            {" "}
+            {t("Выберите идею в каталоге и соберите компанию.")}{" "}
           </Empty>
         ) : (
           <div className="plan-grid">
@@ -1389,10 +1505,11 @@ export function Shell() {
                   <p>{p.meeting_note}</p>
                   {plans.some((q) => overlaps(p, q)) && (
                     <p className="banner">
-                      Другой план начинается в это же время
+                      {" "}
+                      {t("Другой план начинается в это же время")}{" "}
                     </p>
                   )}
-                  <span className="link">Открыть план →</span>
+                  <span className="link">{t("Открыть план →")}</span>
                 </a>
               ))}
           </div>
@@ -1404,21 +1521,25 @@ export function Shell() {
       auth
     ) : (
       <div className="narrow">
-        <h1>Ваш профиль</h1>
+        <h1>{t("Ваш профиль")}</h1>
         {productFeatures.providers && (
           <div className="row wrap">
             <a className="button" href="/partner">
-              Предложить услуги
+              {" "}
+              {t("Предложить услуги")}{" "}
             </a>
             <a className="button secondary" href="/requests">
-              Мои заявки
+              {" "}
+              {t("Мои заявки")}{" "}
             </a>
           </div>
         )}
         {isGuest && (
           <p className="banner">
-            Вы вошли по имени. Доступ привязан к этому браузеру. После выхода
-            или очистки данных восстановить его нельзя.
+            {" "}
+            {t(
+              "Вы вошли по имени. Доступ привязан к этому браузеру. После выхода или очистки данных восстановить его нельзя.",
+            )}{" "}
           </p>
         )}
         <div className="card">
@@ -1428,17 +1549,20 @@ export function Shell() {
               setNotice("Имя сохранено");
             })}
           >
-            <Field name="name" label="Как вас зовут" />
-            <button disabled={busy}>Сохранить</button>
+            <Field name="name" label={t("Как вас зовут")} />
+            <button disabled={busy}>{t("Сохранить")}</button>
           </form>
           <a className="button secondary" href="/submit">
-            Предложить место или событие
+            {" "}
+            {t("Предложить место или событие")}{" "}
           </a>
           <a className="button secondary" href="/saved">
-            Сохранённые идеи
+            {" "}
+            {t("Сохранённые идеи")}{" "}
           </a>
           <a className="button secondary" href="/admin">
-            Редакторская проверка
+            {" "}
+            {t("Редакторская проверка")}{" "}
           </a>
           <button
             className="secondary"
@@ -1451,13 +1575,16 @@ export function Shell() {
               })
             }
           >
-            Выйти
+            {" "}
+            {t("Выйти")}{" "}
           </button>
           <details>
-            <summary>Удаление аккаунта</summary>
+            <summary>{t("Удаление аккаунта")}</summary>
             <p>
-              Запрос передаётся администратору. До фактического удаления нужно
-              обработать владение компаниями и личные данные.
+              {" "}
+              {t(
+                "Запрос передаётся администратору. До фактического удаления нужно обработать владение компаниями и личные данные.",
+              )}{" "}
             </p>
             <button
               className="secondary danger"
@@ -1471,11 +1598,12 @@ export function Shell() {
                 })
               }
             >
-              Запросить удаление
+              {" "}
+              {t("Запросить удаление")}{" "}
             </button>
           </details>
         </div>
-        <h2>Мои предложения</h2>
+        <h2>{t("Мои предложения")}</h2>
         {submissions.map((s) => (
           <div className="card" key={s.id}>
             <h3>{s.title}</h3>
@@ -1497,12 +1625,13 @@ export function Shell() {
               s.publication_status,
             ) && (
               <a className="button secondary" href={`/submit/${s.id}`}>
-                Редактировать
+                {" "}
+                {t("Редактировать")}{" "}
               </a>
             )}
           </div>
         ))}
-        <h2>Обновления планов</h2>
+        <h2>{t("Обновления планов")}</h2>
         {notifications.length ? (
           notifications.map((n) => (
             <p className="card" key={n.id}>
@@ -1510,7 +1639,7 @@ export function Shell() {
             </p>
           ))
         ) : (
-          <p>Обновлений пока нет.</p>
+          <p>{t("Обновлений пока нет.")}</p>
         )}
       </div>
     );
@@ -1519,17 +1648,22 @@ export function Shell() {
       auth
     ) : parts[1] && !submission ? (
       <Empty
-        title={submissionsLoaded ? "Черновик недоступен" : "Загружаем черновик"}
+        title={
+          submissionsLoaded ? t("Черновик недоступен") : t("Загружаем черновик")
+        }
       >
-        Дождитесь загрузки или вернитесь к своим предложениям.
+        {" "}
+        {t("Дождитесь загрузки или вернитесь к своим предложениям.")}{" "}
       </Empty>
     ) : (
       <div className="narrow">
         {back}
-        <h1>Поделиться открытием</h1>
+        <h1>{t("Поделиться открытием")}</h1>
         <p>
-          Перед публикацией редактор проверит сведения. Правка опубликованного
-          предложения снимет его с показа до повторной проверки.
+          {" "}
+          {t(
+            "Перед публикацией редактор проверит сведения. Правка опубликованного предложения снимет его с показа до повторной проверки.",
+          )}{" "}
         </p>
         <form
           className="card"
@@ -1544,42 +1678,45 @@ export function Shell() {
           <input type="hidden" name="id" value={submission?.id ?? ""} />
           <Field
             name="title"
-            label="Название"
+            label={t("Название")}
             defaultValue={submission?.title}
           />
           <label className="field">
-            Город
+            {" "}
+            {t("Город")}{" "}
             <select name="city" defaultValue={submission?.city}>
               {cities.map((c) => (
                 <option key={c.slug} value={c.slug}>
-                  {c.name}
+                  {t(c.name)}
                 </option>
               ))}
             </select>
           </label>
           <label className="field">
-            Категория
+            {" "}
+            {t("Категория")}{" "}
             <select name="category" defaultValue={submission?.category}>
               {categories.slice(1).map((c) => (
-                <option key={c}>{c}</option>
+                <option key={t(c)}>{t(c)}</option>
               ))}
             </select>
           </label>
           <label className="field">
-            Тип
+            {" "}
+            {t("Тип")}{" "}
             <select
               name="kind"
-              aria-label="Тип"
+              aria-label={t("Тип")}
               defaultValue={submission?.kind ?? "place"}
             >
-              <option value="place">Место</option>
-              <option value="experience">Программа</option>
-              <option value="event">Событие</option>
+              <option value="place">{t("Место")}</option>
+              <option value="experience">{t("Программа")}</option>
+              <option value="event">{t("Событие")}</option>
             </select>
           </label>
           <Field
             name="event_starts"
-            label="Дата события · UTC+5 (для события обязательна)"
+            label={t("Дата события · UTC+5 (для события обязательна)")}
             type="datetime-local"
             required={false}
             defaultValue={
@@ -1593,7 +1730,8 @@ export function Shell() {
             }
           />
           <label className="field">
-            Описание
+            {" "}
+            {t("Описание")}{" "}
             <textarea
               name="summary"
               minLength={10}
@@ -1604,15 +1742,15 @@ export function Shell() {
           </label>
           <Field
             name="address"
-            label="Публичное место или адрес"
+            label={t("Публичное место или адрес")}
             defaultValue={submission?.address ?? undefined}
           />
           <label className="checkbox">
-            <input type="checkbox" name="rights" required />
-            Подтверждаю право публиковать описание
+            <input type="checkbox" name="rights" required />{" "}
+            {t("Подтверждаю право публиковать описание")}{" "}
           </label>
           <div className="row wrap">
-            <button disabled={busy}>Отправить на проверку</button>
+            <button disabled={busy}>{t("Отправить на проверку")}</button>
             <button
               type="button"
               className="secondary"
@@ -1625,7 +1763,8 @@ export function Shell() {
                 });
               }}
             >
-              Сохранить черновик
+              {" "}
+              {t("Сохранить черновик")}{" "}
             </button>
           </div>
         </form>
@@ -1636,14 +1775,17 @@ export function Shell() {
       auth
     ) : (
       <>
-        <h1>Редакторская проверка</h1>
+        <h1>{t("Редакторская проверка")}</h1>
         <a className="button secondary" href="/partner-review">
-          Проверка исполнителей и услуг
+          {" "}
+          {t("Проверка исполнителей и услуг")}{" "}
         </a>
         {!error && <CatalogEditor db={db!} listings={listings} />}
         <p>
-          Доступ назначается администратором БД. Пользователь не может выдать
-          его себе.
+          {" "}
+          {t(
+            "Доступ назначается администратором БД. Пользователь не может выдать его себе.",
+          )}{" "}
         </p>
         {queue.map((l) => (
           <div className="card" key={l.id}>
@@ -1656,9 +1798,10 @@ export function Shell() {
                 setQueue(await api.queue(db!));
               })}
             >
-              <Field name="reason" label="Причина отклонения" />
+              <Field name="reason" label={t("Причина отклонения")} />
               <button className="secondary" disabled={busy}>
-                Отклонить
+                {" "}
+                {t("Отклонить")}{" "}
               </button>
             </form>
             <button
@@ -1670,36 +1813,55 @@ export function Shell() {
                 })
               }
             >
-              Опубликовать после проверки
+              {" "}
+              {t("Опубликовать после проверки")}{" "}
             </button>
           </div>
         ))}
       </>
     );
+  else if (section === "open-data")
+    content = (
+      <div className="narrow">
+        {back}
+        <OpenCulture
+          city={city as "semey" | "almaty"}
+          onCategory={setCategory}
+          expanded
+        />
+      </div>
+    );
   else if (section === "privacy" || section === "terms")
     content = (
       <div className="narrow card">
         <h1>
-          {section === "privacy" ? "О данных в Qayda" : "Условия использования"}
+          {section === "privacy"
+            ? t("О данных в Qayda")
+            : t("Условия использования")}
         </h1>
         <p>
-          Это версия для закрытого тестирования. Для аккаунта используются
-          email, отображаемое имя, планы и ответы участников. Компания и
-          обсуждение доступны её активным участникам.
+          {" "}
+          {t(
+            "Это версия для закрытого тестирования. Для аккаунта используются email, отображаемое имя, планы и ответы участников. Компания и обсуждение доступны её активным участникам.",
+          )}{" "}
         </p>
         <p>
-          Приглашение можно переслать. Не включайте чувствительные сведения в
-          его заголовок. Экспорт календаря передаёт выбранные детали во внешний
-          календарь.
+          {" "}
+          {t(
+            "Приглашение можно переслать. Не включайте чувствительные сведения в его заголовок. Экспорт календаря передаёт выбранные детали во внешний календарь.",
+          )}{" "}
         </p>
         <p>
-          RSVP не бронирует услугу. Бюджет является пользовательским расчётом.
-          Внешние билеты и услуги оформляются у продавца.
+          {" "}
+          {t(
+            "RSVP не бронирует услугу. Бюджет является пользовательским расчётом. Внешние билеты и услуги оформляются у продавца.",
+          )}{" "}
         </p>
         <p>
-          Перед публичным запуском требуется утвердить оператора сервиса,
-          инфраструктуру, сроки хранения, контакты для обращений и окончательные
-          юридические тексты.
+          {" "}
+          {t(
+            "Перед публичным запуском требуется утвердить оператора сервиса, инфраструктуру, сроки хранения, контакты для обращений и окончательные юридические тексты.",
+          )}{" "}
         </p>
       </div>
     );
@@ -1707,16 +1869,18 @@ export function Shell() {
     content = (
       <div className="narrow">
         {back}
-        <span className="eyebrow">ЛЮДИ ЗА КАДРОМ</span>
-        <h1>Фотографии Казахстана</h1>
+        <span className="eyebrow">{t("ЛЮДИ ЗА КАДРОМ")}</span>
+        <h1>{t("Фотографии Казахстана")}</h1>
         <p>
-          Спасибо авторам, которые делятся своими снимками. Фотографии уменьшены
-          и кадрируются по размеру карточки.
+          {" "}
+          {t(
+            "Спасибо авторам, которые делятся своими снимками. Фотографии уменьшены и кадрируются по размеру карточки.",
+          )}{" "}
         </p>
         {Object.entries(photos).map(([key, p]) => (
           <article className="card photo-license" key={key}>
             <Photo photoKey={key as keyof typeof photos} />
-            <h2>{p.alt}</h2>
+            <h2>{t(p.alt)}</h2>
             <p>{p.author}</p>
             <a
               className="link"
@@ -1725,8 +1889,8 @@ export function Shell() {
               rel="noreferrer"
             >
               {p.licenseUrl
-                ? "Оригинал на Wikimedia Commons ↗"
-                : "Открыть фотографию ↗"}
+                ? t("Оригинал на Wikimedia Commons ↗")
+                : t("Открыть фотографию ↗")}
             </a>
             <p>
               {p.licenseUrl ? (
@@ -1736,10 +1900,10 @@ export function Shell() {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  {p.license}
+                  {t(p.license)}
                 </a>
               ) : (
-                p.license
+                t(p.license)
               )}
             </p>
           </article>
@@ -1762,26 +1926,29 @@ export function Shell() {
                   strokeWidth={1.6}
                 />
                 <div className="hero-brand">Qayda</div>
-                <p className="hero-tagline">Открываем Казахстан вместе</p>
+                <p className="hero-tagline">
+                  {t("Открываем Казахстан вместе")}
+                </p>
                 <h1>
-                  Куда поедем <em>вместе?</em>
+                  {" "}
+                  {t("Куда поедем")} <em>{t("вместе?")}</em>
                 </h1>
                 <div className="search hero-search">
                   <Search size={20} />
                   <input
-                    aria-label="Поиск мест"
+                    aria-label={t("Поиск мест")}
                     type="search"
-                    placeholder="Куда вы хотите поехать?"
+                    placeholder={t("Куда вы хотите поехать?")}
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
-                  <a href="#ideas" aria-label="Показать найденные места">
+                  <a href="#ideas" aria-label={t("Показать найденные места")}>
                     <ArrowRight size={20} />
                   </a>
                 </div>
                 <div
                   className="quick-categories"
-                  aria-label="Быстрый выбор категории"
+                  aria-label={t("Быстрый выбор категории")}
                 >
                   {[
                     ["Наследие", Landmark],
@@ -1795,44 +1962,49 @@ export function Shell() {
                     return (
                       <a
                         href="#ideas"
-                        key={name as string}
+                        key={t(name as string)}
                         onClick={() => setCategory(name as string)}
                       >
                         <span>
                           <CategoryIcon size={24} strokeWidth={1.6} />
                         </span>
-                        <small className="quick-title">{name as string}</small>
+                        <small className="quick-title">
+                          {t(name as string)}
+                        </small>
                       </a>
                     );
                   })}
                 </div>
               </div>
               <a className="landscape-caption" href="/photos">
-                <MapPin size={14} /> Большое Алматинское озеро
+                <MapPin size={14} /> {t("Большое Алматинское озеро")}{" "}
               </a>
             </section>
             {productFeatures.providers && (
               <section className="provider-callout">
                 <div>
-                  <span className="eyebrow">ОДНОМУ ИЛИ С ДРУЗЬЯМИ</span>
-                  <h2>Кто поможет с поездкой?</h2>
+                  <span className="eyebrow">{t("ОДНОМУ ИЛИ С ДРУЗЬЯМИ")}</span>
+                  <h2>{t("Кто поможет с поездкой?")}</h2>
                   <p>
-                    Гид, машина с водителем или готовый тур — выбирайте
-                    подходящий формат.
+                    {" "}
+                    {t(
+                      "Гид, машина с водителем или готовый тур — выбирайте подходящий формат.",
+                    )}{" "}
                   </p>
                 </div>
                 <a className="button" href="/providers">
-                  Найти исполнителя <ArrowUpRight size={18} />
+                  {" "}
+                  {t("Найти исполнителя")} <ArrowUpRight size={18} />
                 </a>
               </section>
             )}
-            <section className="city-section" aria-label="Выбор города">
+            <section className="city-section" aria-label={t("Выбор города")}>
               <div className="section-title">
                 <div>
-                  <span className="eyebrow">С ЧЕГО НАЧНЁМ?</span>
-                  <h2>Выберите свой город</h2>
+                  <span className="eyebrow">{t("С ЧЕГО НАЧНЁМ?")}</span>
+                  <h2>{t("Выберите свой город")}</h2>
                 </div>
-                <span className="muted">Два города. Много историй.</span>
+                <span className="muted">{t("Два города. Много историй.")}</span>
               </div>
               <div className="city-cards">
                 {cities.map((c) => (
@@ -1849,11 +2021,11 @@ export function Shell() {
                     <Photo photoKey={c.slug} />
                     <div className="city-overlay">
                       <div>
-                        <h3>{c.name}</h3>
+                        <h3>{t(c.name)}</h3>
                         <p>
                           {c.slug === "semey"
-                            ? "История · Культура · Иртыш"
-                            : "Горы · Искусство · Впечатления"}
+                            ? t("История · Культура · Иртыш")
+                            : t("Горы · Искусство · Впечатления")}
                         </p>
                       </div>
                       <span className="city-arrow">
@@ -1868,31 +2040,37 @@ export function Shell() {
         ) : (
           <div className="page-heading">
             <div>
-              <span className="eyebrow">НАХОДИТЕ СВОЁ</span>
+              <span className="eyebrow">{t("НАХОДИТЕ СВОЁ")}</span>
               <h1>
                 {section === "saved"
-                  ? "Сохранённые идеи"
-                  : "Каталог впечатлений"}
+                  ? t("Сохранённые идеи")
+                  : t("Каталог впечатлений")}
               </h1>
             </div>
           </div>
         )}
-        <section id="ideas">
+        <OpenCulture
+          city={city as "semey" | "almaty"}
+          onCategory={setCategory}
+        />
+        <section id="ideas" tabIndex={-1}>
           <div className="section-title">
             <div>
-              <span className="eyebrow">НАЧНИТЕ С МАЛЕНЬКОГО ПУТЕШЕСТВИЯ</span>
-              <h2>Ваш следующий выходной</h2>
+              <span className="eyebrow">
+                {t("НАЧНИТЕ С МАЛЕНЬКОГО ПУТЕШЕСТВИЯ")}
+              </span>
+              <h2>{t("Ваш следующий выходной")}</h2>
             </div>
             <label className="city-select">
               <MapPin size={18} />
               <select
-                aria-label="Город"
+                aria-label={t("Город")}
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
               >
                 {cities.map((c) => (
                   <option key={c.slug} value={c.slug}>
-                    {c.name}
+                    {t(c.name)}
                   </option>
                 ))}
               </select>
@@ -1902,9 +2080,9 @@ export function Shell() {
             <div className="search">
               <Search size={20} />
               <input
-                aria-label="Поиск мест"
+                aria-label={t("Поиск мест")}
                 type="search"
-                placeholder="Место, история или новое впечатление"
+                placeholder={t("Место, история или новое впечатление")}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
               />
@@ -1913,12 +2091,12 @@ export function Shell() {
           <div className="filters">
             {categories.map((c) => (
               <button
-                key={c}
+                key={t(c)}
                 className={c === category ? "selected" : "secondary"}
                 aria-pressed={c === category}
                 onClick={() => setCategory(c)}
               >
-                {c === "Наследие" && <Landmark size={15} />} {c}
+                {c === "Наследие" && <Landmark size={15} />} {t(c)}
               </button>
             ))}
           </div>
@@ -1928,7 +2106,7 @@ export function Shell() {
                 <div
                   className="skeleton"
                   key={i}
-                  aria-label="Загрузка карточки"
+                  aria-label={t("Загрузка карточки")}
                 />
               ))}
             </div>
@@ -1942,11 +2120,22 @@ export function Shell() {
           {!loading &&
             !visible.filter((l) => section !== "saved" || saved.includes(l.id))
               .length && (
-              <Empty title="Пока нет подходящих идей">
-                Попробуйте другой город или категорию.
+              <Empty title={t("Пока нет подходящих идей")}>
+                {" "}
+                {t("Попробуйте другой город или категорию.")}{" "}
+                <button
+                  className="secondary"
+                  onClick={() => {
+                    setQuery("");
+                    setCategory("Все");
+                  }}
+                >
+                  {t("Сбросить фильтры")}
+                </button>
                 {error && (
                   <button onClick={() => void loadCatalog()}>
-                    Повторить загрузку
+                    {" "}
+                    {t("Повторить загрузку")}{" "}
                   </button>
                 )}
               </Empty>
@@ -1955,31 +2144,33 @@ export function Shell() {
         <section className="how">
           <div>
             <Mountain />
-            <h3>Откройте место</h3>
-            <p>Найдите культурный маршрут или идею выходного.</p>
+            <h3>{t("Откройте место")}</h3>
+            <p>{t("Найдите культурный маршрут или идею выходного.")}</p>
           </div>
           <div>
             {productFeatures.tripPlanning ? <Users /> : <MapPin />}
             <h3>
               {productFeatures.tripPlanning
-                ? "Соберите своих"
-                : "Узнайте о месте"}
+                ? t("Соберите своих")
+                : t("Узнайте о месте")}
             </h3>
             <p>
               {productFeatures.tripPlanning
-                ? "Отправьте приглашение и получите ответы."
-                : "Посмотрите фотографии, описание и источник сведений."}
+                ? t("Отправьте приглашение и получите ответы.")
+                : t("Посмотрите фотографии, описание и источник сведений.")}
             </p>
           </div>
           <div>
             <Check />
             <h3>
-              {productFeatures.tripPlanning ? "Договоритесь" : "Откройте карту"}
+              {productFeatures.tripPlanning
+                ? t("Договоритесь")
+                : t("Откройте карту")}
             </h3>
             <p>
               {productFeatures.tripPlanning
-                ? "Зафиксируйте время, место встречи и расходы."
-                : "Найдите место на карте и спланируйте дорогу."}
+                ? t("Зафиксируйте время, место встречи и расходы.")
+                : t("Найдите место на карте и спланируйте дорогу.")}
             </p>
           </div>
         </section>
@@ -1987,56 +2178,67 @@ export function Shell() {
     );
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        {t("Перейти к содержанию")}
+      </a>
       <header className="topbar">
         <a className="wordmark" href="/">
           <Mountain size={28} />
-          Qayda<span>открывай со своими</span>
+          Qayda<span>{t("открывай со своими")}</span>
         </a>
-        <nav aria-label="Основная навигация">
+        <nav aria-label={t("Основная навигация")}>
           <a className={section === "home" ? "current" : ""} href="/">
-            Главная
+            {" "}
+            {t("Главная")}{" "}
           </a>
           <a className={section === "explore" ? "current" : ""} href="/explore">
-            Каталог
+            {" "}
+            {t("Каталог")}{" "}
           </a>
           {productFeatures.providers && (
             <a
               className={section === "providers" ? "current" : ""}
               href="/providers"
             >
-              С кем поехать
+              {" "}
+              {t("С кем поехать")}{" "}
             </a>
           )}
           {productFeatures.tripPlanning && (
             <a className={section === "plans" ? "current" : ""} href="/plans">
-              Мои планы
+              {" "}
+              {t("Мои планы")}{" "}
             </a>
           )}
         </nav>
         <a className="profile-link" href="/profile">
           <UserRound size={18} />
-          {user ? "Профиль" : "Войти"}
+          {user ? t("Профиль") : t("Войти")}
         </a>
       </header>
-      <main>
+      <DisplayControls />
+      <main id="main-content" tabIndex={-1}>
         {!db && (
           <div className="demo-label">
-            ДЕМОПРОСМОТР · Идеи для проверки интерфейса. Backend ещё не
-            подключён.
+            {" "}
+            {t(
+              "ДЕМОПРОСМОТР · Идеи для проверки интерфейса. Backend ещё не подключён.",
+            )}{" "}
           </div>
         )}
-        {!ready && <p role="status">Восстанавливаем сессию…</p>}
+        {!ready && <p role="status">{t("Восстанавливаем сессию…")}</p>}
         {error && (
           <div className="error" role="alert">
-            {error}
+            {t(error)}
             <button className="text-button" onClick={() => setError("")}>
-              Закрыть
+              {" "}
+              {t("Закрыть")}{" "}
             </button>
           </div>
         )}
         {notice && (
           <div className="notice" role="status">
-            {notice}
+            {t(notice)}
           </div>
         )}
         {content}
@@ -2045,15 +2247,16 @@ export function Shell() {
         <a className="wordmark" href="/">
           Qayda
         </a>
-        <p>Открывай Казахстан со своими.</p>
+        <p>{t("Открывай Казахстан со своими.")}</p>
         <div>
-          <a href="/privacy">О данных</a>
-          <a href="/terms">Условия</a>
-          <a href="/photos">Фотографии</a>
+          <a href="/privacy">{t("О данных")}</a>
+          <a href="/terms">{t("Условия")}</a>
+          <a href="/photos">{t("Фотографии")}</a>
+          <a href="/open-data">{t("Открытые данные")}</a>
         </div>
-        <small>Закрытая тестовая версия · 2026</small>
+        <small>{t("Закрытая тестовая версия · 2026")}</small>
       </footer>
-      <nav className="bottom-nav" aria-label="Мобильная навигация">
+      <nav className="bottom-nav" aria-label={t("Мобильная навигация")}>
         {[
           ["/", "Главная", Compass],
           ["/explore", "Места", Menu],
@@ -2075,7 +2278,7 @@ export function Shell() {
                 aria-current={path === href ? "page" : undefined}
               >
                 <I size={21} />
-                {String(label)}
+                {t(String(label))}
               </a>
             );
           })}

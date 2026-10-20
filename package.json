@@ -11,7 +11,7 @@
   },
   "scripts": {
     "dev": "npm run dev --workspace @qayda/web -- --port 3002",
-    "mobile": "npm run start -w @qayda/mobile",
+    "mobile": "npm run start -w @qayda/mobile --",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "eslint .",
     "test": "vitest run",

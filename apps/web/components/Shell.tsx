@@ -1705,17 +1705,23 @@ export function Shell() {
               target="_blank"
               rel="noreferrer"
             >
-              Оригинал на Wikimedia Commons ↗
+              {p.licenseUrl
+                ? "Оригинал на Wikimedia Commons ↗"
+                : "Открыть фотографию ↗"}
             </a>
             <p>
-              <a
-                className="link"
-                href={p.licenseUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                {p.license}
-              </a>
+              {p.licenseUrl ? (
+                <a
+                  className="link"
+                  href={p.licenseUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {p.license}
+                </a>
+              ) : (
+                p.license
+              )}
             </p>
           </article>
         ))}

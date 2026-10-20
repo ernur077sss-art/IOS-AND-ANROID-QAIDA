@@ -1,16 +1,30 @@
 // Curated local photos. Unknown/UGC listings deliberately have no assigned photo.
 export const photos = {
-  konyr: {
-    title: "Konyr Aulie East Kz.jpg",
-    source: "https://commons.wikimedia.org/wiki/File:Konyr_Aulie_East_Kz.jpg",
+  yrgyz: {
+    title: "Мавзолей Ыргызбай ата — фото автора проекта",
+    source: "https://qayda-qodex-mobile.vercel.app/photos/yrgyz-20261020.jpg",
+    original: "https://qayda-qodex-mobile.vercel.app/photos/yrgyz-20261020.jpg",
+    author: "Автор проекта Qayda",
+    license: "Используется с разрешения автора",
+    licenseUrl: null,
+    description:
+      "Личная фотография мавзолея, предоставленная пользователем для Qayda 20 октября 2026 года.",
+    changes: "JPEG encoded and cropped to fit",
+    alt: "Фасад мавзолея Ыргызбай ата",
+  },
+  konyrOwner: {
+    title: "Коныр-Аулие — фото автора проекта",
+    source:
+      "https://qayda-qodex-mobile.vercel.app/photos/konyrOwner-20261020.jpg",
     original:
-      "https://upload.wikimedia.org/wikipedia/commons/1/1c/Konyr_Aulie_East_Kz.jpg",
-    author: "Yakov Fedorov",
-    license: "CC BY-SA 4.0",
-    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0",
-    description: "Пещера Коныр-Аулие, область Абай. Снимок 26 мая 2018 года.",
-    changes: "Resized, JPEG encoded and cropped to fit",
-    alt: "Пещера Коныр-Аулие в горах Актас, область Абай",
+      "https://qayda-qodex-mobile.vercel.app/photos/konyrOwner-20261020.jpg",
+    author: "Автор проекта Qayda",
+    license: "Используется с разрешения автора",
+    licenseUrl: null,
+    description:
+      "Личная фотография подземного озера, предоставленная пользователем для Qayda 20 октября 2026 года.",
+    changes: "JPEG encoded and cropped to fit",
+    alt: "Подземное озеро в пещере Коныр-Аулие",
   },
   lake: {
     title: "Big Almaty Lake.jpg",
@@ -131,7 +145,8 @@ export const photos = {
 } as const;
 export type PhotoKey = keyof typeof photos;
 const listingPhotos: Record<string, PhotoKey> = {
-  "00000000-0000-4000-8000-000000000107": "konyr",
+  "00000000-0000-4000-8000-000000000107": "konyrOwner",
+  "00000000-0000-4000-8000-000000000108": "yrgyz",
   "00000000-0000-4000-8000-000000000101": "abay",
   "00000000-0000-4000-8000-000000000102": "zhidebay",
   "00000000-0000-4000-8000-000000000103": "dostoevsky",

@@ -312,7 +312,7 @@ export default function App() {
         <Heading>Фотографии Казахстана</Heading>
         <Copy>
           Фотографии уменьшены и кадрируются по размеру карточки. Спасибо
-          авторам за открытые снимки.
+          авторам за предоставленные снимки.
         </Copy>
         {Object.entries(photos).map(([key, photo]) => (
           <Card key={key}>
@@ -325,7 +325,9 @@ export default function App() {
               secondary
               onPress={() => void Linking.openURL(photo.source)}
             >
-              Оригинал и лицензия ↗
+              {photo.licenseUrl
+                ? "Оригинал и лицензия ↗"
+                : "Открыть фотографию ↗"}
             </Button>
           </Card>
         ))}

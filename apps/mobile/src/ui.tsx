@@ -71,7 +71,8 @@ export function Field({
 // Metro needs statically analyzable requires to package photos for offline use.
 /* eslint-disable @typescript-eslint/no-require-imports */
 const photoSources = {
-  konyr: require("../assets/photos/konyr.jpg"),
+  konyrOwner: require("../assets/photos/konyrOwner.jpg"),
+  yrgyz: require("../assets/photos/yrgyz.jpg"),
   lake: require("../assets/photos/lake.jpg"),
   semey: require("../assets/photos/semey.jpg"),
   almaty: require("../assets/photos/almaty.jpg"),

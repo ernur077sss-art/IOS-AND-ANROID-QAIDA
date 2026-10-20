@@ -66,7 +66,7 @@ export function Shell() {
   const [guestName, setGuestName] = useState("");
   const [isGuest, setIsGuest] = useState(false);
   const [user, setUser] = useState<string | null>(null);
-  const [ready, setReady] = useState(!db);
+  const [ready, setReady] = useState(false);
   const [listings, setListings] = useState<Listing[]>(db ? [] : demoListings);
   const [loading, setLoading] = useState(!!db);
   const [error, setError] = useState("");
@@ -125,7 +125,10 @@ export function Shell() {
   }, []);
   const previousUser = useRef<string | null>(null);
   useEffect(() => {
-    if (!db) return;
+    if (!db) {
+      setReady(true);
+      return;
+    }
     let live = true;
     const accept = (id: string | null, guest = false) => {
       setIsGuest(guest);
@@ -622,6 +625,7 @@ export function Shell() {
             </a>
           )}
           <button
+            disabled={!ready}
             onClick={() => {
               if (needAuth()) router.push(`/create/${selected.id}`);
             }}
@@ -630,7 +634,7 @@ export function Shell() {
           </button>
           <button
             className="secondary"
-            disabled={busy}
+            disabled={!ready || busy}
             onClick={() => {
               if (needAuth())
                 void act(async () => {

@@ -424,6 +424,10 @@ export default function App() {
             onChange={setStarts}
             placeholder="2026-11-01T11:00"
           />
+          <Copy>
+            Выберите будущую дату и время Алматы. Планировать можно на ближайшие
+            два года.
+          </Copy>
           <Field label="Место встречи" value={meeting} onChange={setMeeting} />
           <Button
             disabled={busy || !l}

@@ -9,6 +9,8 @@ export function Field({
   required = true,
   defaultValue,
   placeholder,
+  hint,
+  error,
 }: {
   name: string;
   label: string;
@@ -16,11 +18,16 @@ export function Field({
   required?: boolean;
   defaultValue?: string;
   placeholder?: string;
+  hint?: string;
+  error?: string;
 }) {
   return (
     <label className="field">
       {label}
       <input
+        id={name}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={error || hint ? `${name}-help` : undefined}
         name={name}
         type={type}
         required={required}
@@ -28,6 +35,15 @@ export function Field({
         placeholder={placeholder}
         maxLength={type === "text" ? 500 : undefined}
       />
+      {(error || hint) && (
+        <small
+          id={`${name}-help`}
+          className={error ? "field-error" : "muted"}
+          role={error ? "alert" : undefined}
+        >
+          {error || hint}
+        </small>
+      )}
     </label>
   );
 }

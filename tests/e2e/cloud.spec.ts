@@ -45,8 +45,24 @@ test("two real browser sessions coordinate a plan", async ({
     const future = new Date(Date.now() + 86400000 * 14)
       .toISOString()
       .slice(0, 16);
-    await owner.getByLabel("Дата и время").fill(future);
+    await owner.getByLabel("Дата и время").fill("2026-09-25T11:23");
     await owner.getByLabel("Где встречаемся").fill("Демо · у входа в музей");
+    await owner
+      .getByRole("button", { name: "Создать план", exact: true })
+      .click();
+    await expect(owner.getByLabel("Дата и время")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    await expect(
+      owner
+        .getByText("Дата встречи уже прошла. Выберите будущие дату и время", {
+          exact: true,
+        })
+        .first(),
+    ).toBeVisible();
+    await expect(owner).toHaveURL(/\/create\//);
+    await owner.getByLabel("Дата и время").fill(future);
     await owner
       .getByRole("button", { name: "Создать план", exact: true })
       .click();

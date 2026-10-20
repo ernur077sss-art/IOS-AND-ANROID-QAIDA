@@ -360,3 +360,26 @@ export function searchCatalogue(
 }
 
 export { photos, listingPhoto, type PhotoKey } from "./media";
+
+/** Shared creation rules, matching the create_plan RPC boundary. */
+export function validatePlanCreation(
+  input: { title: string; starts_at: string; meeting_note: string },
+  now = Date.now(),
+) {
+  if (input.title.trim().length < 3 || input.title.trim().length > 160)
+    throw new Error("Название плана должно содержать от 3 до 160 символов");
+  const starts = Date.parse(input.starts_at);
+  if (!Number.isFinite(starts))
+    throw new Error("Укажите корректные дату и время встречи");
+  if (starts <= now)
+    throw new Error("Дата встречи уже прошла. Выберите будущие дату и время");
+  const latest = new Date(now);
+  latest.setUTCFullYear(latest.getUTCFullYear() + 2);
+  if (starts > latest.getTime())
+    throw new Error("Выберите дату встречи в пределах ближайших двух лет");
+  if (
+    input.meeting_note.trim().length < 3 ||
+    input.meeting_note.trim().length > 500
+  )
+    throw new Error("Место встречи должно содержать от 3 до 500 символов");
+}

@@ -1,3 +1,4 @@
+import { validatePlanCreation } from "@qayda/domain";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
   Listing,
@@ -117,15 +118,17 @@ export const api = {
       request_id: string;
       group_id?: string;
     },
-  ) =>
-    rpc<string>(c, "create_plan", {
+  ) => {
+    validatePlanCreation(input);
+    return rpc<string>(c, "create_plan", {
       p_listing: input.listing_id,
-      p_title: input.title,
+      p_title: input.title.trim(),
       p_starts: input.starts_at,
-      p_meeting: input.meeting_note,
+      p_meeting: input.meeting_note.trim(),
       p_request: input.request_id,
       p_group: input.group_id ?? null,
-    }),
+    });
+  },
   action: (
     c: Client,
     id: string,

@@ -639,6 +639,12 @@ export function Shell() {
             name="starts"
             label="Дата и время · Алматы (UTC+5)"
             type="datetime-local"
+            hint="Выберите будущую дату. Встречу можно запланировать на ближайшие два года."
+            error={
+              /дата встречи|дату встречи|дату и время встречи/i.test(error)
+                ? error
+                : undefined
+            }
           />
           <Field
             name="meeting"

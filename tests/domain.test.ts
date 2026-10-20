@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  validatePlanCreation,
   splitBudget,
   parseMoney,
   localToUtc,
@@ -100,4 +101,42 @@ it("calendar cancellation advances sequence without changing RSVP version", () =
   expect(after).toContain("UID:same-plan@qayda");
   const sequence = (ics: string) => Number(/SEQUENCE:(\d+)/.exec(ics)![1]);
   expect(sequence(after)).toBeGreaterThan(sequence(before));
+});
+
+describe("дата создания плана", () => {
+  const now = Date.parse("2026-10-20T14:00:00Z");
+  const input = {
+    title: "Поездка с друзьями",
+    meeting_note: "У входа в музей",
+    starts_at: "2026-10-21T14:00:00Z",
+  };
+  it("объясняет отказ для даты со скриншота и текущего момента", () => {
+    for (const starts_at of [
+      "2026-09-25T06:23:00Z",
+      new Date(now).toISOString(),
+    ])
+      expect(() => validatePlanCreation({ ...input, starts_at }, now)).toThrow(
+        "Дата встречи уже прошла",
+      );
+  });
+  it("принимает будущую встречу и отклоняет некорректную или слишком далёкую дату", () => {
+    expect(() => validatePlanCreation(input, now)).not.toThrow();
+    expect(() =>
+      validatePlanCreation({ ...input, starts_at: "invalid" }, now),
+    ).toThrow("корректные дату");
+    expect(() =>
+      validatePlanCreation(
+        { ...input, starts_at: "2028-10-21T14:00:00Z" },
+        now,
+      ),
+    ).toThrow("двух лет");
+  });
+  it("называет поле с коротким названием или местом встречи", () => {
+    expect(() =>
+      validatePlanCreation({ ...input, title: "  а " }, now),
+    ).toThrow("Название плана");
+    expect(() =>
+      validatePlanCreation({ ...input, meeting_note: "  " }, now),
+    ).toThrow("Место встречи");
+  });
 });

@@ -1292,3 +1292,10 @@ body {
     font-size: 12px;
   }
 }
+.field-error {
+  color: var(--error);
+  font-size: 12px;
+}
+.field input[aria-invalid="true"] {
+  border-color: var(--error);
+}

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { readFile, readdir } from "node:fs/promises";
@@ -409,6 +410,329 @@ await check("public API contains no elevated implementation", async () => {
   );
   assert.equal(r.rows[0].n, 0);
 });
+let providerId, offerId, requestId;
+const providerInput = {
+  kind: "guide",
+  city: "semey",
+  name: "Демо · гид",
+  description: "Синтетический профиль для проверки заявок",
+  languages: "Русский",
+  phone: "+70000000001",
+  publish_contacts: true,
+};
+const offerInput = {
+  kind: "excursion",
+  title: "Демо · экскурсия",
+  program: "Синтетическая программа экскурсии",
+  included: "Экскурсия",
+  excluded: "Транспорт",
+  departure: "Демо · у музея",
+  duration_minutes: 180,
+  min_guests: 1,
+  max_guests: 4,
+  price_minor: "10000",
+  price_basis: "person",
+  cancellation: "Согласовать отмену до поездки",
+  listing_id: lid,
+};
+await check(
+  "provider submission hides contacts until independent moderation",
+  async () => {
+    providerId = await asUser(users[1], () =>
+      rpc("save_provider", [providerInput]),
+    );
+    await asUser(null, async () =>
+      assert.equal(
+        (await db.query("select id from public.providers where managed=true"))
+          .rows.length,
+        0,
+      ),
+    );
+    await asUser(users[2], () =>
+      assert.rejects(
+        rpc("save_provider", [
+          { ...providerInput, id: providerId, version: 1 },
+        ]),
+        /FORBIDDEN/,
+      ),
+    );
+    await asUser(users[0], () =>
+      rpc("review_partner", ["provider", providerId, 1, true]),
+    );
+    await asUser(null, async () =>
+      assert.equal(
+        (await db.query("select id from public.providers where managed=true"))
+          .rows.length,
+        1,
+      ),
+    );
+  },
+);
+await check(
+  "provider cannot self-publish even with editor role; offers require review",
+  async () => {
+    offerId = await asUser(users[1], () =>
+      rpc("save_offer", [{ ...offerInput, provider_id: providerId }]),
+    );
+    await db.query(
+      "insert into private.admin_roles values($1) on conflict do nothing",
+      [users[1]],
+    );
+    await asUser(users[1], () =>
+      assert.rejects(
+        rpc("review_partner", ["offer", offerId, 1, true]),
+        /SELF_REVIEW/,
+      ),
+    );
+    await db.query("delete from private.admin_roles where user_id=$1", [
+      users[1],
+    ]);
+    await asUser(null, async () =>
+      assert.equal(
+        (await db.query("select id from public.service_offers")).rows.length,
+        0,
+      ),
+    );
+    await asUser(users[0], () =>
+      rpc("review_partner", ["offer", offerId, 1, true]),
+    );
+  },
+);
+const requestInput = () => ({
+  offer_id: offerId,
+  offer_version: 2,
+  guests: 1,
+  starts_at: future,
+  contact_name: "Демо клиент",
+  contact_phone: "+70000000002",
+  contact_consent: true,
+  note: "Тест",
+  request_key: randomUUID(),
+});
+await check(
+  "solo request works with one guest, consent, current offer and idempotency",
+  async () => {
+    const input = requestInput();
+    requestId = await asUser(users[0], () => rpc("send_trip_request", [input]));
+    await asUser(users[0], async () => {
+      assert.equal(await rpc("send_trip_request", [input]), requestId);
+      await assert.rejects(
+        rpc("send_trip_request", [{ ...input, guests: 2 }]),
+        /VERSION_CONFLICT/,
+      );
+      await assert.rejects(
+        rpc("send_trip_request", [
+          { ...requestInput(), contact_consent: false },
+        ]),
+        /CONTACT_CONSENT_REQUIRED/,
+      );
+      await assert.rejects(
+        rpc("send_trip_request", [{ ...requestInput(), offer_version: null }]),
+        /VERSION_CONFLICT/,
+      );
+    });
+  },
+);
+await check(
+  "request contacts and history are private; response roles and versions enforced",
+  async () => {
+    await asUser(users[2], async () => {
+      assert.deepEqual(await rpc("my_trip_requests"), []);
+      await assert.rejects(
+        db.query("select contact_phone from public.trip_requests"),
+        /permission denied/,
+      );
+      await assert.rejects(
+        rpc("respond_trip_request", [
+          requestId,
+          1,
+          "propose",
+          future,
+          20000,
+          "Тест",
+        ]),
+        /NOT_FOUND/,
+      );
+    });
+    await asUser(users[0], () =>
+      assert.rejects(
+        rpc("respond_trip_request", [
+          requestId,
+          1,
+          "propose",
+          future,
+          20000,
+          "Тест",
+        ]),
+        /INVALID_TRANSITION/,
+      ),
+    );
+    await asUser(users[1], () =>
+      rpc("respond_trip_request", [
+        requestId,
+        1,
+        "propose",
+        future,
+        20000,
+        "Подтверждаю условия",
+      ]),
+    );
+    await asUser(users[0], async () => {
+      await assert.rejects(
+        rpc("respond_trip_request", [requestId, 1, "accept"]),
+        /VERSION_CONFLICT/,
+      );
+      await rpc("respond_trip_request", [requestId, 2, "accept"]);
+      const list = await rpc("my_trip_requests");
+      assert.equal(list[0].status, "confirmed");
+      assert.equal(list[0].events.length, 3);
+    });
+  },
+);
+await check(
+  "editing an offer withdraws it and preserves the request snapshot",
+  async () => {
+    await asUser(users[1], () =>
+      rpc("save_offer", [
+        {
+          ...offerInput,
+          id: offerId,
+          version: 2,
+          provider_id: providerId,
+          title: "Демо · другая программа",
+        },
+      ]),
+    );
+    await asUser(null, async () =>
+      assert.equal(
+        (await db.query("select id from public.service_offers")).rows.length,
+        0,
+      ),
+    );
+    await asUser(users[0], async () => {
+      const list = await rpc("my_trip_requests");
+      assert.equal(list[0].offer_snapshot.title, "Демо · экскурсия");
+      await assert.rejects(
+        rpc("send_trip_request", [requestInput()]),
+        /NOT_FOUND/,
+      );
+      await rpc("review_partner", ["offer", offerId, 3, true]);
+    });
+  },
+);
+let groupPlan, groupRequest;
+await check(
+  "group request needs owner, actual agreed count and matching date",
+  async () => {
+    groupPlan = await asUser(users[0], () =>
+      rpc("create_plan", [
+        lid,
+        "Демо · группа для заявки",
+        future,
+        "Демо место",
+        randomUUID(),
+      ]),
+    );
+    await asUser(users[0], () => rpc("plan_action", [groupPlan, 1, "publish"]));
+    const inv = await asUser(users[0], () =>
+      rpc("create_invitation", [groupPlan, "Демо группа"]),
+    );
+    await asUser(users[2], () => rpc("redeem_invitation", [inv.token]));
+    for (const u of [users[0], users[2]])
+      await asUser(u, () => rpc("set_rsvp", [groupPlan, 1, "going"]));
+    const input = {
+      ...requestInput(),
+      offer_version: 4,
+      plan_id: groupPlan,
+      plan_version: 1,
+      guests: 2,
+    };
+    await asUser(users[2], () =>
+      assert.rejects(rpc("send_trip_request", [input]), /FORBIDDEN/),
+    );
+    await asUser(users[0], async () => {
+      await assert.rejects(
+        rpc("send_trip_request", [{ ...input, guests: 1 }]),
+        /PARTY_CHANGED/,
+      );
+      await assert.rejects(
+        rpc("send_trip_request", [{ ...input, plan_version: null }]),
+        /VERSION_CONFLICT/,
+      );
+      groupRequest = await rpc("send_trip_request", [input]);
+      await assert.rejects(
+        rpc("send_trip_request", [{ ...input, request_key: randomUUID() }]),
+        /duplicate key/,
+      );
+    });
+  },
+);
+await check(
+  "group acceptance requires agreed budget covering quote",
+  async () => {
+    await asUser(users[1], () =>
+      rpc("respond_trip_request", [
+        groupRequest,
+        1,
+        "propose",
+        future,
+        20000,
+        "Демо условия",
+      ]),
+    );
+    await asUser(users[0], () =>
+      assert.rejects(
+        rpc("respond_trip_request", [groupRequest, 2, "accept"]),
+        /GROUP_BUDGET_NOT_AGREED/,
+      ),
+    );
+    await asUser(users[0], async () => {
+      await rpc("add_budget_item", [groupPlan, 1, "Услуга", 20000, "shared"]);
+      await rpc("recalculate_budget", [groupPlan, 1]);
+      await rpc("agree_budget", [groupPlan, 1]);
+    });
+    await asUser(users[2], () => rpc("agree_budget", [groupPlan, 1]));
+    await asUser(users[0], () =>
+      rpc("respond_trip_request", [groupRequest, 2, "accept"]),
+    );
+  },
+);
+await check(
+  "changed group invalidates provider proposal; cancellation permits a new request",
+  async () => {
+    await asUser(users[0], () =>
+      rpc("respond_trip_request", [groupRequest, 3, "cancel"]),
+    );
+    groupRequest = await asUser(users[0], () =>
+      rpc("send_trip_request", [
+        {
+          ...requestInput(),
+          offer_version: 4,
+          plan_id: groupPlan,
+          plan_version: 1,
+          guests: 2,
+        },
+      ]),
+    );
+    await asUser(users[1], () =>
+      rpc("respond_trip_request", [
+        groupRequest,
+        1,
+        "propose",
+        future,
+        20000,
+        "Демо условия",
+      ]),
+    );
+    await asUser(users[2], () => rpc("set_rsvp", [groupPlan, 1, "not_going"]));
+    await asUser(users[0], () =>
+      assert.rejects(
+        rpc("respond_trip_request", [groupRequest, 2, "accept"]),
+        /PARTY_CHANGED/,
+      ),
+    );
+  },
+);
 console.log(
   `Database: ${n} checks passed (PostgreSQL WASM, real pgcrypto; Auth context shim only).`,
 );

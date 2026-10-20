@@ -1,6 +1,9 @@
 import { validatePlanCreation } from "@qayda/domain";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
+  Provider,
+  ServiceOffer,
+  TripRequest,
   Listing,
   Plan,
   Member,
@@ -31,6 +34,12 @@ export type Client = SupabaseClient;
 export function humanError(error: unknown) {
   if (typeof error === "object" && error && "code" in error) {
     const code = String(error.code);
+    if (
+      code === "23505" &&
+      "message" in error &&
+      String(error.message).includes("one_live_group_request")
+    )
+      return "Для этой компании уже есть активная заявка. Откройте «Мои заявки»";
     if (["23514", "23502", "22P02", "22007", "22008"].includes(code))
       return "Проверьте заполненные поля и допустимые значения";
     if (code === "42501") return "Нет доступа к этому действию";
@@ -45,6 +54,21 @@ export function humanError(error: unknown) {
   const codes: Record<string, string> = {
     NOT_AUTHENTICATED: "Войдите в аккаунт",
     FORBIDDEN: "Нет доступа к этому действию",
+    CONTACT_CONSENT_REQUIRED:
+      "Подтвердите передачу или публикацию указанных контактов",
+    CONTACT_REQUIRED: "Укажите телефон или https-ссылку для связи",
+    SELF_REVIEW: "Своё предложение нельзя одобрить самостоятельно",
+    SELF_REQUEST: "Нельзя отправить заявку самому себе",
+    REASON_REQUIRED: "Укажите причину, не короче трёх символов",
+    PARTNER_NOT_READY:
+      "Сначала редактор должен опубликовать профиль исполнителя",
+    PARTY_CHANGED:
+      "Состав компании изменился. Отмените эту заявку и создайте новую после согласования",
+    GROUP_BUDGET_NOT_AGREED:
+      "Согласуйте со всеми участниками бюджет, покрывающий стоимость предложения",
+    PLAN_NOT_READY:
+      "Опубликуйте план, согласуйте дату и получите ответы участников. Дата заявки должна совпадать с планом",
+    PARTY_SIZE: "Количество участников не соответствует условиям предложения",
     VERSION_CONFLICT: "План изменился. Обновите страницу",
     INVALID_INVITATION: "Приглашение истекло, отозвано или исчерпано",
     INVALID_TRANSITION: "Сейчас это действие недоступно",
@@ -70,6 +94,70 @@ async function rpc<T>(
   return data as T;
 }
 export const api = {
+  providers: async (c: Client) => {
+    const { data, error } = await c
+      .from("providers")
+      .select(
+        "id,kind,city,name,description,languages,phone,contact_url,source_url,checked_at,vehicle,seats,status,verified,version,managed,listing_ids",
+      )
+      .order("name");
+    if (error) throw error;
+    return data as Provider[];
+  },
+  offers: async (c: Client) => {
+    const { data, error } = await c
+      .from("service_offers")
+      .select("*")
+      .order("title");
+    if (error) throw error;
+    return data as ServiceOffer[];
+  },
+  providerWorkspace: (c: Client) =>
+    rpc<{ providers: Provider[]; offers: ServiceOffer[] }>(
+      c,
+      "provider_workspace",
+    ),
+  saveProvider: (c: Client, values: Record<string, unknown>) =>
+    rpc<string>(c, "save_provider", { p_values: values }),
+  saveOffer: (c: Client, values: Record<string, unknown>) =>
+    rpc<string>(c, "save_offer", { p_values: values }),
+  partnerQueue: (c: Client) =>
+    rpc<{ providers: Provider[]; offers: ServiceOffer[] }>(c, "partner_queue"),
+  reviewPartner: (
+    c: Client,
+    kind: string,
+    id: string,
+    version: number,
+    publish: boolean,
+    reason = "",
+  ) =>
+    rpc(c, "review_partner", {
+      p_kind: kind,
+      p_id: id,
+      p_version: version,
+      p_publish: publish,
+      p_reason: reason,
+    }),
+  tripRequests: (c: Client) => rpc<TripRequest[]>(c, "my_trip_requests"),
+  sendTripRequest: (c: Client, values: Record<string, unknown>) =>
+    rpc<string>(c, "send_trip_request", { p_values: values }),
+  respondTripRequest: (
+    c: Client,
+    id: string,
+    version: number,
+    action: string,
+    starts: string | null = null,
+    total: string | null = null,
+    message = "",
+  ) =>
+    rpc(c, "respond_trip_request", {
+      p_id: id,
+      p_version: version,
+      p_action: action,
+      p_starts: starts,
+      p_total: total,
+      p_message: message,
+    }),
   saveCatalog: (c: Client, values: Record<string, unknown>) =>
     rpc<string>(c, "save_catalog", { p_values: values }),
   messages: (c: Client, id: string, before?: Message) =>

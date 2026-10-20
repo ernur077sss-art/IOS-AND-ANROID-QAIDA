@@ -1,6 +1,7 @@
 "use client";
 import { Field, Photo, PhotoCredit, Empty } from "./ui";
 import { BudgetItemEditor } from "./BudgetItemEditor";
+import { ProvidersHub } from "./ProvidersHub";
 import { CatalogEditor } from "./CatalogEditor";
 import {
   useEffect,
@@ -349,13 +350,24 @@ export function Shell() {
               const { error } = await db.auth.signInAnonymously();
               if (error) throw error;
               await api.profile(db, cleanName);
-              if (section !== "invite") router.push("/plans");
+              if (
+                ![
+                  "invite",
+                  "request",
+                  "partner",
+                  "requests",
+                  "create",
+                  "partner-review",
+                ].includes(section)
+              )
+                router.push("/plans");
             })}
           >
             <label className="field">
               Ваше имя
               <input
                 name="guest_name"
+                disabled={!ready}
                 autoComplete="nickname"
                 maxLength={80}
                 required
@@ -367,7 +379,7 @@ export function Shell() {
               Вход по имени сохраняется в этом браузере. После выхода или
               очистки данных восстановить его нельзя.
             </p>
-            <button disabled={busy}>Продолжить по имени</button>
+            <button disabled={!ready || busy}>Продолжить по имени</button>
           </form>
           <details>
             <summary>Войти по email</summary>
@@ -395,7 +407,17 @@ export function Shell() {
                   });
                   if (error) throw error;
                   setNotice("Вы вошли");
-                  if (section !== "invite") router.push("/plans");
+                  if (
+                    ![
+                      "invite",
+                      "request",
+                      "partner",
+                      "requests",
+                      "create",
+                      "partner-review",
+                    ].includes(section)
+                  )
+                    router.push("/plans");
                 }
               })}
             >
@@ -468,6 +490,21 @@ export function Shell() {
       </div>
     );
   else if (section === "login") content = auth;
+  else if (
+    ["providers", "partner", "request", "requests", "partner-review"].includes(
+      section,
+    )
+  )
+    content = (
+      <ProvidersHub
+        key={`${user ?? "anon"}:${path}`}
+        db={db}
+        user={user}
+        path={path}
+        listings={listings}
+        auth={auth}
+      />
+    );
   else if (section === "invite")
     content = (
       <div className="narrow">
@@ -532,6 +569,9 @@ export function Shell() {
             </p>
           )}
           <p className="lead">{selected.summary}</p>
+          <a className="button" href={`/providers?place=${selected.id}`}>
+            Найти гида, водителя или турфирму
+          </a>
           {selected.out_of_city && (
             <p className="banner">
               За городом · направление из{" "}
@@ -1286,6 +1326,9 @@ export function Shell() {
           <div>
             <span className="eyebrow">СОБИРАЙТЕ ВПЕЧАТЛЕНИЯ</span>
             <h1>{section === "calendar" ? "Ваш календарь" : "Ваши планы"}</h1>
+            <a className="link" href="/requests">
+              Заявки исполнителям →
+            </a>
           </div>
           <a className="button" href="/explore">
             <Plus size={18} />
@@ -1341,6 +1384,14 @@ export function Shell() {
     ) : (
       <div className="narrow">
         <h1>Ваш профиль</h1>
+        <div className="row wrap">
+          <a className="button" href="/partner">
+            Предложить услуги
+          </a>
+          <a className="button secondary" href="/requests">
+            Мои заявки
+          </a>
+        </div>
         {isGuest && (
           <p className="banner">
             Вы вошли по имени. Доступ привязан к этому браузеру. После выхода
@@ -1563,6 +1614,9 @@ export function Shell() {
     ) : (
       <>
         <h1>Редакторская проверка</h1>
+        <a className="button secondary" href="/partner-review">
+          Проверка исполнителей и услуг
+        </a>
         {!error && <CatalogEditor db={db!} listings={listings} />}
         <p>
           Доступ назначается администратором БД. Пользователь не может выдать
@@ -1728,6 +1782,19 @@ export function Shell() {
                 <MapPin size={14} /> Большое Алматинское озеро
               </a>
             </section>
+            <section className="provider-callout">
+              <div>
+                <span className="eyebrow">ОДНОМУ ИЛИ С ДРУЗЬЯМИ</span>
+                <h2>Кто поможет с поездкой?</h2>
+                <p>
+                  Гид, машина с водителем или готовый тур — выбирайте подходящий
+                  формат.
+                </p>
+              </div>
+              <a className="button" href="/providers">
+                Найти исполнителя <ArrowUpRight size={18} />
+              </a>
+            </section>
             <section className="city-section" aria-label="Выбор города">
               <div className="section-title">
                 <div>
@@ -1887,6 +1954,12 @@ export function Shell() {
           <a className={section === "explore" ? "current" : ""} href="/explore">
             Каталог
           </a>
+          <a
+            className={section === "providers" ? "current" : ""}
+            href="/providers"
+          >
+            С кем поехать
+          </a>
           <a className={section === "plans" ? "current" : ""} href="/plans">
             Мои планы
           </a>
@@ -1934,7 +2007,8 @@ export function Shell() {
       <nav className="bottom-nav" aria-label="Мобильная навигация">
         {[
           ["/", "Главная", Compass],
-          ["/explore", "Каталог", Menu],
+          ["/explore", "Места", Menu],
+          ["/providers", "Исполнители", Users],
           ["/plans", "Планы", CalendarDays],
           ["/profile", "Профиль", UserRound],
         ].map(([href, label, Icon]) => {

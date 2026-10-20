@@ -33,10 +33,13 @@ import {
 import { db } from "./backend";
 import { useModel } from "./model";
 import { Button, Field, Art, Card, Heading, Copy } from "./ui";
+import { useLocalSearchParams } from "expo-router";
+import { NativeProvidersHub } from "./ProvidersHub";
 import { color, s } from "./theme";
 export { NativeProvider } from "./model";
 export default function App() {
   const model = useModel();
+  const params = useLocalSearchParams<{ place?: string }>();
   const {
     path,
     router,
@@ -161,7 +164,16 @@ export default function App() {
                 const { error } = await db!.auth.signInAnonymously();
                 if (error) throw error;
                 await api.profile(db!, cleanName);
-                if (section !== "invite") go("/plans");
+                if (
+                  ![
+                    "invite",
+                    "request",
+                    "partner",
+                    "requests",
+                    "create",
+                  ].includes(section)
+                )
+                  go("/plans");
               })
             }
           >
@@ -249,6 +261,19 @@ export default function App() {
   );
   let content: ReactNode;
   if (section === "login") content = login;
+  else if (["providers", "partner", "request", "requests"].includes(section))
+    content = (
+      <NativeProvidersHub
+        key={`${user ?? "anon"}:${path}`}
+        db={db}
+        user={user}
+        path={path}
+        listings={model.listings}
+        auth={login}
+        go={go}
+        place={typeof params.place === "string" ? params.place : undefined}
+      />
+    );
   else if (section === "invite")
     content = (
       <>
@@ -332,6 +357,9 @@ export default function App() {
           </Text>
         )}
         <Copy>{l.summary}</Copy>
+        <Button onPress={() => go(`/providers?place=${l.id}`)}>
+          Найти гида, водителя или турфирму
+        </Button>
         <Card>
           <Copy>{l.address ?? "Адрес уточняется"}</Copy>
           <Copy>
@@ -1023,6 +1051,10 @@ export default function App() {
     ) : (
       <>
         <Text style={s.h1}>Ваш профиль</Text>
+        <Button onPress={() => go("/partner")}>Предложить услуги</Button>
+        <Button secondary onPress={() => go("/requests")}>
+          Мои заявки
+        </Button>
         {isGuest && (
           <Copy>
             Вы вошли по имени. После выхода или очистки приложения доступ к
@@ -1342,6 +1374,15 @@ export default function App() {
                 </Pressable>
               </View>
             </View>
+            <Card>
+              <Heading>Кто поможет с поездкой?</Heading>
+              <Copy>
+                Гид, машина с водителем или готовый тур — одному и с друзьями.
+              </Copy>
+              <Button onPress={() => go("/providers")}>
+                Найти исполнителя
+              </Button>
+            </Card>
             <Heading>Выберите свой город</Heading>
             <View style={s.cityGrid}>
               {cities.map((c) => (
@@ -1465,7 +1506,8 @@ export default function App() {
       <View style={s.nav}>
         {[
           ["/", "⌂", "Главная"],
-          ["/explore", "▦", "Каталог"],
+          ["/explore", "▦", "Места"],
+          ["/providers", "♧", "Исполнители"],
           ["/plans", "□", "Планы"],
           ["/profile", "○", "Профиль"],
         ].map(([p, icon, t]) => (

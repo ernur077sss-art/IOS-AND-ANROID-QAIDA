@@ -44,6 +44,7 @@ export default function App() {
     id,
     go,
     user,
+    isGuest,
     visible,
     loading,
     city,
@@ -145,6 +146,28 @@ export default function App() {
         </Copy>
       ) : (
         <>
+          <Field label="Ваше имя" value={name} onChange={setName} />
+          <Copy>
+            Вход по имени сохраняется на этом устройстве. После выхода или
+            очистки приложения восстановить его нельзя.
+          </Copy>
+          <Button
+            disabled={busy || !name.trim()}
+            onPress={() =>
+              void act(async () => {
+                const cleanName = name.trim();
+                if (!cleanName || cleanName.length > 80)
+                  throw new Error("Укажите имя длиной от 1 до 80 символов");
+                const { error } = await db!.auth.signInAnonymously();
+                if (error) throw error;
+                await api.profile(db!, cleanName);
+                if (section !== "invite") go("/plans");
+              })
+            }
+          >
+            Продолжить по имени
+          </Button>
+          <Copy>Или войдите по email</Copy>
           {!sent ? (
             <Field
               label="Email"
@@ -1000,6 +1023,12 @@ export default function App() {
     ) : (
       <>
         <Text style={s.h1}>Ваш профиль</Text>
+        {isGuest && (
+          <Copy>
+            Вы вошли по имени. После выхода или очистки приложения доступ к
+            этому профилю будет потерян.
+          </Copy>
+        )}
         <Card>
           <Field label="Как вас зовут" value={name} onChange={setName} />
           <Button

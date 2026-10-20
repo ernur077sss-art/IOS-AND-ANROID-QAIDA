@@ -62,6 +62,8 @@ type Room = Awaited<ReturnType<typeof api.room>>;
 export function Shell() {
   const path = usePathname();
   const router = useRouter();
+  const [guestName, setGuestName] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
   const [user, setUser] = useState<string | null>(null);
   const [ready, setReady] = useState(!db);
   const [listings, setListings] = useState<Listing[]>(db ? [] : demoListings);
@@ -124,7 +126,8 @@ export function Shell() {
   useEffect(() => {
     if (!db) return;
     let live = true;
-    const accept = (id: string | null) => {
+    const accept = (id: string | null, guest = false) => {
+      setIsGuest(guest);
       if (previousUser.current !== id) {
         setRoom(null);
         setPlans([]);
@@ -138,13 +141,16 @@ export function Shell() {
     };
     db.auth.getSession().then(({ data, error }) => {
       if (live) {
-        accept(data.session?.user.id ?? null);
+        accept(
+          data.session?.user.id ?? null,
+          !!data.session?.user.is_anonymous,
+        );
         setReady(true);
         if (error) setError(humanError(error));
       }
     });
     const { data } = db.auth.onAuthStateChange((_, session) => {
-      accept(session?.user.id ?? null);
+      accept(session?.user.id ?? null, !!session?.user.is_anonymous);
       setReady(true);
     });
     return () => {
@@ -334,69 +340,107 @@ export function Shell() {
           идей уже доступен.
         </Empty>
       ) : (
-        <form
-          onSubmit={form(async (data) => {
-            if (!otpSent) {
-              const e = String(data.get("email"));
-              const { error } = await db.auth.signInWithOtp({
-                email: e,
-                options: {
-                  emailRedirectTo: `${window.location.origin}/auth/callback`,
-                },
-              });
+        <>
+          <form
+            onSubmit={form(async () => {
+              const cleanName = guestName.trim();
+              if (!cleanName || cleanName.length > 80)
+                throw new Error("Укажите имя длиной от 1 до 80 символов");
+              const { error } = await db.auth.signInAnonymously();
               if (error) throw error;
-              setEmail(e);
-              setOtpSent(true);
-              setNotice(
-                "Письмо отправлено. Откройте ссылку входа и вернитесь сюда. Если в письме есть код, его можно ввести ниже.",
-              );
-            } else {
-              const { error } = await db.auth.verifyOtp({
-                email,
-                token: String(data.get("code")),
-                type: "email",
-              });
-              if (error) throw error;
-              setNotice("Вы вошли");
+              await api.profile(db, cleanName);
               if (section !== "invite") router.push("/plans");
-            }
-          })}
-        >
-          {!otpSent ? (
+            })}
+          >
             <label className="field">
-              Email
-              <input name="email" type="email" autoComplete="email" required />
-            </label>
-          ) : (
-            <label className="field">
-              Код из письма
+              Ваше имя
               <input
-                name="code"
-                autoComplete="one-time-code"
-                inputMode="numeric"
+                name="guest_name"
+                autoComplete="nickname"
+                maxLength={80}
                 required
-                minLength={6}
-                maxLength={10}
+                value={guestName}
+                onChange={(e) => setGuestName(e.target.value)}
               />
             </label>
-          )}
-          <button disabled={busy}>
-            {busy
-              ? "Подождите…"
-              : otpSent
-                ? "Войти"
-                : "Получить письмо для входа"}
-          </button>
-          {otpSent && (
-            <button
-              type="button"
-              className="secondary"
-              onClick={() => setOtpSent(false)}
+            <p className="muted">
+              Вход по имени сохраняется в этом браузере. После выхода или
+              очистки данных восстановить его нельзя.
+            </p>
+            <button disabled={busy}>Продолжить по имени</button>
+          </form>
+          <details>
+            <summary>Войти по email</summary>
+            <form
+              onSubmit={form(async (data) => {
+                if (!otpSent) {
+                  const e = String(data.get("email"));
+                  const { error } = await db.auth.signInWithOtp({
+                    email: e,
+                    options: {
+                      emailRedirectTo: `${window.location.origin}/auth/callback`,
+                    },
+                  });
+                  if (error) throw error;
+                  setEmail(e);
+                  setOtpSent(true);
+                  setNotice(
+                    "Письмо отправлено. Откройте ссылку входа и вернитесь сюда. Если в письме есть код, его можно ввести ниже.",
+                  );
+                } else {
+                  const { error } = await db.auth.verifyOtp({
+                    email,
+                    token: String(data.get("code")),
+                    type: "email",
+                  });
+                  if (error) throw error;
+                  setNotice("Вы вошли");
+                  if (section !== "invite") router.push("/plans");
+                }
+              })}
             >
-              Другой email
-            </button>
-          )}
-        </form>
+              {!otpSent ? (
+                <label className="field">
+                  Email
+                  <input
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                  />
+                </label>
+              ) : (
+                <label className="field">
+                  Код из письма
+                  <input
+                    name="code"
+                    autoComplete="one-time-code"
+                    inputMode="numeric"
+                    required
+                    minLength={6}
+                    maxLength={10}
+                  />
+                </label>
+              )}
+              <button disabled={busy}>
+                {busy
+                  ? "Подождите…"
+                  : otpSent
+                    ? "Войти"
+                    : "Получить письмо для входа"}
+              </button>
+              {otpSent && (
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setOtpSent(false)}
+                >
+                  Другой email
+                </button>
+              )}
+            </form>
+          </details>
+        </>
       )}
     </div>
   );
@@ -1155,7 +1199,7 @@ export function Shell() {
                     Number(data.get("hours")),
                   );
                   setInviteLink(
-                    `${window.location.origin}/invite#t=${i.token}`,
+                    `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/invite#t=${i.token}`,
                   );
                   await reloadRoom();
                 })}
@@ -1297,6 +1341,12 @@ export function Shell() {
     ) : (
       <div className="narrow">
         <h1>Ваш профиль</h1>
+        {isGuest && (
+          <p className="banner">
+            Вы вошли по имени. Доступ привязан к этому браузеру. После выхода
+            или очистки данных восстановить его нельзя.
+          </p>
+        )}
         <div className="card">
           <form
             onSubmit={form(async (data) => {

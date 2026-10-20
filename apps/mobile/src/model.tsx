@@ -25,6 +25,7 @@ function useNativeModel() {
   const section = parts[0] ?? "home";
   const id = parts[1];
   const go = (p: string) => router.push(p as Href);
+  const [isGuest, setIsGuest] = useState(false);
   const [user, setUser] = useState<string | null>(null);
   const [listings, setListings] = useState<Listing[]>(db ? [] : demoListings);
   const [loading, setLoading] = useState(!!db);
@@ -82,7 +83,8 @@ function useNativeModel() {
   activeScope.current = `${user ?? ""}|${path}`;
   useEffect(() => {
     if (!db) return;
-    const accept = (id: string | null) => {
+    const accept = (id: string | null, guest = false) => {
+      setIsGuest(guest);
       if (previousUser.current !== id) {
         setRoom(null);
         setPlans([]);
@@ -96,9 +98,14 @@ function useNativeModel() {
     };
     db.auth
       .getSession()
-      .then(({ data }) => accept(data.session?.user.id ?? null));
+      .then(({ data }) =>
+        accept(
+          data.session?.user.id ?? null,
+          !!data.session?.user.is_anonymous,
+        ),
+      );
     const { data } = db.auth.onAuthStateChange((_, v) =>
-      accept(v?.user.id ?? null),
+      accept(v?.user.id ?? null, !!v?.user.is_anonymous),
     );
     return () => data.subscription.unsubscribe();
   }, []);
@@ -200,6 +207,7 @@ function useNativeModel() {
     id,
     go,
     user,
+    isGuest,
     listings,
     visible,
     loading,

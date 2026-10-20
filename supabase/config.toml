@@ -8,8 +8,9 @@ max_rows = 200
 major_version = 17
 [auth]
 enabled = true
-site_url = "http://127.0.0.1:3002"
-additional_redirect_urls = ["qayda://login", "qayda:///login", "http://127.0.0.1:3002/auth/callback", "http://localhost:3002/auth/callback"]
+enable_anonymous_sign_ins = true
+site_url = "https://qayda-qodex-mobile.vercel.app"
+additional_redirect_urls = ["https://qayda-qodex-mobile.vercel.app/auth/callback", "qayda://login", "qayda:///login", "http://127.0.0.1:3002/auth/callback", "http://localhost:3002/auth/callback"]
 [auth.email]
 enable_signup = true
 enable_confirmations = true

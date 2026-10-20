@@ -15,6 +15,7 @@ import * as Crypto from "expo-crypto";
 import * as ExpoLinking from "expo-linking";
 import { api } from "@qayda/api-client";
 import {
+  productFeatures,
   photos,
   listingPhoto,
   cities,
@@ -140,9 +141,17 @@ export default function App() {
   );
   const login = (
     <Card>
-      <Text style={s.eyebrow}>СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ</Text>
+      <Text style={s.eyebrow}>
+        {productFeatures.tripPlanning
+          ? "СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ"
+          : "ВАШИ ЛЮБИМЫЕ МЕСТА"}
+      </Text>
       <Text style={s.h1}>Вход в Qayda</Text>
-      <Copy>Войдите, чтобы создавать планы и отвечать друзьям.</Copy>
+      <Copy>
+        {productFeatures.tripPlanning
+          ? "Войдите, чтобы создавать планы и отвечать друзьям."
+          : "Войдите, чтобы сохранять понравившиеся места."}
+      </Copy>
       {!db ? (
         <Copy>
           Backend пока не подключён. Можно посмотреть демонстрационный каталог.
@@ -173,7 +182,7 @@ export default function App() {
                     "create",
                   ].includes(section)
                 )
-                  go("/plans");
+                  go(productFeatures.tripPlanning ? "/plans" : "/explore");
               })
             }
           >
@@ -218,7 +227,13 @@ export default function App() {
                     type: "email",
                   });
                   if (error) throw error;
-                  go(token ? "/invite" : "/plans");
+                  go(
+                    token
+                      ? "/invite"
+                      : productFeatures.tripPlanning
+                        ? "/plans"
+                        : "/explore",
+                  );
                 }
               })
             }
@@ -359,9 +374,11 @@ export default function App() {
           </Text>
         )}
         <Copy>{l.summary}</Copy>
-        <Button onPress={() => go(`/providers?place=${l.id}`)}>
-          Найти гида, водителя или турфирму
-        </Button>
+        {productFeatures.providers && (
+          <Button onPress={() => go(`/providers?place=${l.id}`)}>
+            Найти гида, водителя или турфирму
+          </Button>
+        )}
         <Card>
           <Copy>{l.address ?? "Адрес уточняется"}</Copy>
           <Copy>
@@ -388,18 +405,20 @@ export default function App() {
             </Button>
           )}
         </Card>
-        <Button
-          onPress={() => {
-            if (auth()) {
-              setTitle(l.title);
-              setStarts("");
-              setMeeting("");
-              go(`/create/${l.id}`);
-            }
-          }}
-        >
-          Собрать компанию
-        </Button>
+        {productFeatures.tripPlanning && (
+          <Button
+            onPress={() => {
+              if (auth()) {
+                setTitle(l.title);
+                setStarts("");
+                setMeeting("");
+                go(`/create/${l.id}`);
+              }
+            }}
+          >
+            Собрать компанию
+          </Button>
+        )}
         <Button
           secondary
           disabled={busy}
@@ -739,7 +758,7 @@ export default function App() {
                 onPress={() =>
                   void act(async () => {
                     await api.leave(db!, id);
-                    go("/plans");
+                    go(productFeatures.tripPlanning ? "/plans" : "/explore");
                   })
                 }
               >
@@ -1053,10 +1072,14 @@ export default function App() {
     ) : (
       <>
         <Text style={s.h1}>Ваш профиль</Text>
-        <Button onPress={() => go("/partner")}>Предложить услуги</Button>
-        <Button secondary onPress={() => go("/requests")}>
-          Мои заявки
-        </Button>
+        {productFeatures.providers && (
+          <>
+            <Button onPress={() => go("/partner")}>Предложить услуги</Button>
+            <Button secondary onPress={() => go("/requests")}>
+              Мои заявки
+            </Button>
+          </>
+        )}
         {isGuest && (
           <Copy>
             Вы вошли по имени. После выхода или очистки приложения доступ к
@@ -1376,15 +1399,17 @@ export default function App() {
                 </Pressable>
               </View>
             </View>
-            <Card>
-              <Heading>Кто поможет с поездкой?</Heading>
-              <Copy>
-                Гид, машина с водителем или готовый тур — одному и с друзьями.
-              </Copy>
-              <Button onPress={() => go("/providers")}>
-                Найти исполнителя
-              </Button>
-            </Card>
+            {productFeatures.providers && (
+              <Card>
+                <Heading>Кто поможет с поездкой?</Heading>
+                <Copy>
+                  Гид, машина с водителем или готовый тур — одному и с друзьями.
+                </Copy>
+                <Button onPress={() => go("/providers")}>
+                  Найти исполнителя
+                </Button>
+              </Card>
+            )}
             <Heading>Выберите свой город</Heading>
             <View style={s.cityGrid}>
               {cities.map((c) => (
@@ -1512,18 +1537,24 @@ export default function App() {
           ["/providers", "♧", "Исполнители"],
           ["/plans", "□", "Планы"],
           ["/profile", "○", "Профиль"],
-        ].map(([p, icon, t]) => (
-          <Pressable
-            accessibilityRole="tab"
-            accessibilityState={{ selected: path === p }}
-            key={p}
-            onPress={() => go(p)}
-            style={s.navItem}
-          >
-            <Text style={[s.navIcon, path === p && s.active]}>{icon}</Text>
-            <Text style={[s.navLabel, path === p && s.active]}>{t}</Text>
-          </Pressable>
-        ))}
+        ]
+          .filter(
+            ([p]) =>
+              (p !== "/providers" || productFeatures.providers) &&
+              (p !== "/plans" || productFeatures.tripPlanning),
+          )
+          .map(([p, icon, t]) => (
+            <Pressable
+              accessibilityRole="tab"
+              accessibilityState={{ selected: path === p }}
+              key={p}
+              onPress={() => go(p)}
+              style={s.navItem}
+            >
+              <Text style={[s.navIcon, path === p && s.active]}>{icon}</Text>
+              <Text style={[s.navLabel, path === p && s.active]}>{t}</Text>
+            </Pressable>
+          ))}
       </View>
     </SafeAreaView>
   );

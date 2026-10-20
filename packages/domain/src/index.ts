@@ -391,3 +391,5 @@ export function validatePlanCreation(
 }
 export * from "./providers";
 export * from "./provider-forms";
+
+export { productFeatures } from "./features";

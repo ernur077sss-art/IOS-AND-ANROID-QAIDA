@@ -1,4 +1,5 @@
 import { test, expect } from "@playwright/test";
+import { productFeatures } from "../../packages/domain/src/features";
 test("catalog, mobile layout, place detail and auth boundary", async ({
   page,
 }) => {
@@ -17,6 +18,10 @@ test("catalog, mobile layout, place detail and auth boundary", async ({
       ),
     ).toBe(true);
   }
+  if (!productFeatures.tripPlanning)
+    await expect(page.locator('a[href="/plans"]')).toHaveCount(0);
+  if (!productFeatures.providers)
+    await expect(page.locator('a[href="/providers"]')).toHaveCount(0);
   await page.getByRole("combobox", { name: "Город" }).selectOption("almaty");
   await expect(
     page.getByRole("heading", {
@@ -35,7 +40,22 @@ test("catalog, mobile layout, place detail and auth boundary", async ({
       level: 1,
     }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Собрать компанию" }).click();
+  if (!productFeatures.tripPlanning)
+    await expect(
+      page.getByRole("button", { name: "Собрать компанию" }),
+    ).toHaveCount(0);
+  if (!productFeatures.providers)
+    await expect(
+      page.getByRole("link", { name: "Найти гида, водителя или турфирму" }),
+    ).toHaveCount(0);
+  if (!productFeatures.tripPlanning)
+    await expect(page.locator('a[href="/plans"]')).toHaveCount(0);
+  if (!productFeatures.providers)
+    await expect(page.locator('a[href="/providers"]')).toHaveCount(0);
+  // The feature is hidden, not removed: its direct route still enforces authentication.
+  if (productFeatures.tripPlanning)
+    await page.getByRole("button", { name: "Собрать компанию" }).click();
+  else await page.goto(page.url().replace("/listing/", "/create/"));
   await expect(
     page
       .getByRole("heading", { name: "Вход в Qayda" })

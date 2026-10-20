@@ -42,6 +42,7 @@ import {
   cities,
   categories,
   demoListings,
+  productFeatures,
   money,
   parseMoney,
   planDate,
@@ -262,7 +263,7 @@ export function Shell() {
       const { error } = await db.auth.exchangeCodeForSession(code);
       window.history.replaceState(null, "", "/auth/callback");
       if (error) throw error;
-      router.replace("/plans");
+      router.replace(productFeatures.tripPlanning ? "/plans" : "/explore");
     });
   }, [section, act, router]);
   const needAuth = () => {
@@ -333,10 +334,16 @@ export function Shell() {
   );
   const auth = (
     <div className="auth card">
-      <span className="eyebrow">СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ</span>
+      <span className="eyebrow">
+        {productFeatures.tripPlanning
+          ? "СОБИРАЙТЕ ПЛАНЫ ВМЕСТЕ"
+          : "ВАШИ ЛЮБИМЫЕ МЕСТА"}
+      </span>
       <h1>Вход в Qayda</h1>
       <p>
-        Каталог открыт всем. Войдите, чтобы создавать планы и отвечать друзьям.
+        {productFeatures.tripPlanning
+          ? "Каталог открыт всем. Войдите, чтобы создавать планы и отвечать друзьям."
+          : "Каталог открыт всем. Войдите, чтобы сохранять понравившиеся места."}
       </p>
       {!db ? (
         <Empty title="Подключение готовится">
@@ -363,7 +370,9 @@ export function Shell() {
                   "partner-review",
                 ].includes(section)
               )
-                router.push("/plans");
+                router.push(
+                  productFeatures.tripPlanning ? "/plans" : "/explore",
+                );
             })}
           >
             <label className="field">
@@ -420,7 +429,9 @@ export function Shell() {
                       "partner-review",
                     ].includes(section)
                   )
-                    router.push("/plans");
+                    router.push(
+                      productFeatures.tripPlanning ? "/plans" : "/explore",
+                    );
                 }
               })}
             >
@@ -572,9 +583,11 @@ export function Shell() {
             </p>
           )}
           <p className="lead">{selected.summary}</p>
-          <a className="button" href={`/providers?place=${selected.id}`}>
-            Найти гида, водителя или турфирму
-          </a>
+          {productFeatures.providers && (
+            <a className="button" href={`/providers?place=${selected.id}`}>
+              Найти гида, водителя или турфирму
+            </a>
+          )}
           {selected.out_of_city && (
             <p className="banner">
               За городом · направление из{" "}
@@ -624,14 +637,16 @@ export function Shell() {
               Открыть карту
             </a>
           )}
-          <button
-            disabled={!ready}
-            onClick={() => {
-              if (needAuth()) router.push(`/create/${selected.id}`);
-            }}
-          >
-            Собрать компанию <Users size={18} />
-          </button>
+          {productFeatures.tripPlanning && (
+            <button
+              disabled={!ready}
+              onClick={() => {
+                if (needAuth()) router.push(`/create/${selected.id}`);
+              }}
+            >
+              Собрать компанию <Users size={18} />
+            </button>
+          )}
           <button
             className="secondary"
             disabled={!ready || busy}
@@ -994,7 +1009,9 @@ export function Shell() {
                   onClick={() =>
                     void act(async () => {
                       await api.leave(db!, planId);
-                      router.push("/plans");
+                      router.push(
+                        productFeatures.tripPlanning ? "/plans" : "/explore",
+                      );
                     })
                   }
                 >
@@ -1388,14 +1405,16 @@ export function Shell() {
     ) : (
       <div className="narrow">
         <h1>Ваш профиль</h1>
-        <div className="row wrap">
-          <a className="button" href="/partner">
-            Предложить услуги
-          </a>
-          <a className="button secondary" href="/requests">
-            Мои заявки
-          </a>
-        </div>
+        {productFeatures.providers && (
+          <div className="row wrap">
+            <a className="button" href="/partner">
+              Предложить услуги
+            </a>
+            <a className="button secondary" href="/requests">
+              Мои заявки
+            </a>
+          </div>
+        )}
         {isGuest && (
           <p className="banner">
             Вы вошли по имени. Доступ привязан к этому браузеру. После выхода
@@ -1792,19 +1811,21 @@ export function Shell() {
                 <MapPin size={14} /> Большое Алматинское озеро
               </a>
             </section>
-            <section className="provider-callout">
-              <div>
-                <span className="eyebrow">ОДНОМУ ИЛИ С ДРУЗЬЯМИ</span>
-                <h2>Кто поможет с поездкой?</h2>
-                <p>
-                  Гид, машина с водителем или готовый тур — выбирайте подходящий
-                  формат.
-                </p>
-              </div>
-              <a className="button" href="/providers">
-                Найти исполнителя <ArrowUpRight size={18} />
-              </a>
-            </section>
+            {productFeatures.providers && (
+              <section className="provider-callout">
+                <div>
+                  <span className="eyebrow">ОДНОМУ ИЛИ С ДРУЗЬЯМИ</span>
+                  <h2>Кто поможет с поездкой?</h2>
+                  <p>
+                    Гид, машина с водителем или готовый тур — выбирайте
+                    подходящий формат.
+                  </p>
+                </div>
+                <a className="button" href="/providers">
+                  Найти исполнителя <ArrowUpRight size={18} />
+                </a>
+              </section>
+            )}
             <section className="city-section" aria-label="Выбор города">
               <div className="section-title">
                 <div>
@@ -1938,14 +1959,28 @@ export function Shell() {
             <p>Найдите культурный маршрут или идею выходного.</p>
           </div>
           <div>
-            <Users />
-            <h3>Соберите своих</h3>
-            <p>Отправьте приглашение и получите ответы.</p>
+            {productFeatures.tripPlanning ? <Users /> : <MapPin />}
+            <h3>
+              {productFeatures.tripPlanning
+                ? "Соберите своих"
+                : "Узнайте о месте"}
+            </h3>
+            <p>
+              {productFeatures.tripPlanning
+                ? "Отправьте приглашение и получите ответы."
+                : "Посмотрите фотографии, описание и источник сведений."}
+            </p>
           </div>
           <div>
             <Check />
-            <h3>Договоритесь</h3>
-            <p>Зафиксируйте время, место встречи и расходы.</p>
+            <h3>
+              {productFeatures.tripPlanning ? "Договоритесь" : "Откройте карту"}
+            </h3>
+            <p>
+              {productFeatures.tripPlanning
+                ? "Зафиксируйте время, место встречи и расходы."
+                : "Найдите место на карте и спланируйте дорогу."}
+            </p>
           </div>
         </section>
       </>
@@ -1964,15 +1999,19 @@ export function Shell() {
           <a className={section === "explore" ? "current" : ""} href="/explore">
             Каталог
           </a>
-          <a
-            className={section === "providers" ? "current" : ""}
-            href="/providers"
-          >
-            С кем поехать
-          </a>
-          <a className={section === "plans" ? "current" : ""} href="/plans">
-            Мои планы
-          </a>
+          {productFeatures.providers && (
+            <a
+              className={section === "providers" ? "current" : ""}
+              href="/providers"
+            >
+              С кем поехать
+            </a>
+          )}
+          {productFeatures.tripPlanning && (
+            <a className={section === "plans" ? "current" : ""} href="/plans">
+              Мои планы
+            </a>
+          )}
         </nav>
         <a className="profile-link" href="/profile">
           <UserRound size={18} />
@@ -2021,19 +2060,25 @@ export function Shell() {
           ["/providers", "Исполнители", Users],
           ["/plans", "Планы", CalendarDays],
           ["/profile", "Профиль", UserRound],
-        ].map(([href, label, Icon]) => {
-          const I = Icon as typeof Compass;
-          return (
-            <a
-              key={String(href)}
-              href={String(href)}
-              aria-current={path === href ? "page" : undefined}
-            >
-              <I size={21} />
-              {String(label)}
-            </a>
-          );
-        })}
+        ]
+          .filter(
+            ([href]) =>
+              (href !== "/providers" || productFeatures.providers) &&
+              (href !== "/plans" || productFeatures.tripPlanning),
+          )
+          .map(([href, label, Icon]) => {
+            const I = Icon as typeof Compass;
+            return (
+              <a
+                key={String(href)}
+                href={String(href)}
+                aria-current={path === href ? "page" : undefined}
+              >
+                <I size={21} />
+                {String(label)}
+              </a>
+            );
+          })}
       </nav>
     </>
   );

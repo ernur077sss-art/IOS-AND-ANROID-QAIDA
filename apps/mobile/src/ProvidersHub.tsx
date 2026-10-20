@@ -791,7 +791,8 @@ export function NativeProvidersHub({
         <Copy>{p.languages}</Copy>
         {p.kind === "driver" && (
           <Copy>
-            {p.vehicle} · {p.seats} пассажирских мест
+            {p.vehicle || "Автомобиль уточняется"} ·{" "}
+            {p.seats ? `${p.seats} пассажирских мест` : "Число мест уточняется"}
           </Copy>
         )}
         {p.phone && (

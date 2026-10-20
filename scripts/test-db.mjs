@@ -733,6 +733,35 @@ await check(
     );
   },
 );
+await check(
+  "unknown directory capacity stays null; registered driver still needs vehicle and seats",
+  async () => {
+    const result = await db.query(
+      "select seats,vehicle,managed from public.providers where id='00000000-0000-4000-9000-000000000205'",
+    );
+    assert.deepEqual(result.rows[0], {
+      seats: null,
+      vehicle: null,
+      managed: false,
+    });
+    await asUser(users[1], async () => {
+      await assert.rejects(
+        () =>
+          rpc("save_provider", [
+            {
+              kind: "driver",
+              city: "semey",
+              name: "Тестовый водитель",
+              description: "Синтетический профиль без транспорта",
+              phone: "+77000000000",
+              publish_contacts: true,
+            },
+          ]),
+        /providers_driver_capacity/,
+      );
+    });
+  },
+);
 console.log(
   `Database: ${n} checks passed (PostgreSQL WASM, real pgcrypto; Auth context shim only).`,
 );

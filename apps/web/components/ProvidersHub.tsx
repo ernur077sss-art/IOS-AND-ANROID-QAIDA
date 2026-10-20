@@ -937,7 +937,10 @@ export function ProvidersHub({
           </div>
           {p.kind === "driver" && (
             <p>
-              {p.vehicle} · {p.seats} пассажирских мест
+              {p.vehicle || "Автомобиль уточняется"} ·{" "}
+              {p.seats
+                ? `${p.seats} пассажирских мест`
+                : "Число мест уточняется"}
             </p>
           )}
           <div className="row wrap">

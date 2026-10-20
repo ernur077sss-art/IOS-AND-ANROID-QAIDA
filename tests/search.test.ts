@@ -13,3 +13,15 @@ it("supports city aliases without mixing city catalogs", () => {
     searchCatalogue(demoListings, "semey", "Все", "неизвестное место"),
   ).toEqual([]);
 });
+
+it("finds place names with spaces, hyphens and Kazakh spelling", () => {
+  const place = {
+    ...demoListings[0],
+    title: "Пещера Коныр-Аулие",
+    summary: "Қоңыр әулие в области Абай",
+    city: "semey" as const,
+  };
+  for (const query of ["коныр аулие", "Коныр-Аулие", "Қоңыр әулие"])
+    expect(searchCatalogue([place], "semey", "Все", query)).toEqual([place]);
+  expect(searchCatalogue([place], "almaty", "Все", "коныр аулие")).toEqual([]);
+});

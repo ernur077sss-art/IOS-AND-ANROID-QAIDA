@@ -1,5 +1,17 @@
 // Curated local photos. Unknown/UGC listings deliberately have no assigned photo.
 export const photos = {
+  konyr: {
+    title: "Konyr Aulie East Kz.jpg",
+    source: "https://commons.wikimedia.org/wiki/File:Konyr_Aulie_East_Kz.jpg",
+    original:
+      "https://upload.wikimedia.org/wikipedia/commons/1/1c/Konyr_Aulie_East_Kz.jpg",
+    author: "Yakov Fedorov",
+    license: "CC BY-SA 4.0",
+    licenseUrl: "https://creativecommons.org/licenses/by-sa/4.0",
+    description: "Пещера Коныр-Аулие, область Абай. Снимок 26 мая 2018 года.",
+    changes: "Resized, JPEG encoded and cropped to fit",
+    alt: "Пещера Коныр-Аулие в горах Актас, область Абай",
+  },
   lake: {
     title: "Big Almaty Lake.jpg",
     source: "https://commons.wikimedia.org/wiki/File:Big_Almaty_Lake.jpg",
@@ -119,6 +131,7 @@ export const photos = {
 } as const;
 export type PhotoKey = keyof typeof photos;
 const listingPhotos: Record<string, PhotoKey> = {
+  "00000000-0000-4000-8000-000000000107": "konyr",
   "00000000-0000-4000-8000-000000000101": "abay",
   "00000000-0000-4000-8000-000000000102": "zhidebay",
   "00000000-0000-4000-8000-000000000103": "dostoevsky",

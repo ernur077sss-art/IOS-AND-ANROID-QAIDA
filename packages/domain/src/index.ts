@@ -340,13 +340,19 @@ export function searchCatalogue(
   category: string,
   query: string,
 ) {
-  const q = query.toLocaleLowerCase("ru").trim();
+  const normalize = (value: string) =>
+    value
+      .toLocaleLowerCase("ru")
+      .replace(/[‐‑–—-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  const q = normalize(query);
   const aliases: Record<string, City> = {
     семей: "semey",
     семипалатинск: "semey",
     semey: "semey",
     алматы: "almaty",
-    "алма-ата": "almaty",
+    "алма ата": "almaty",
     almaty: "almaty",
   };
   const target = aliases[q] ?? city;
@@ -355,7 +361,7 @@ export function searchCatalogue(
     (l) =>
       l.city === target &&
       (category === "Все" || l.category === category) &&
-      `${l.title} ${l.summary}`.toLocaleLowerCase("ru").includes(text),
+      normalize(`${l.title} ${l.summary}`).includes(text),
   );
 }
 
